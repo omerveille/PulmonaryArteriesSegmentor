@@ -1,0 +1,479 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>pulmonary_arteries_segmentor_module</class>
+ <widget class="qMRMLWidget" name="pulmonary_arteries_segmentor_module">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>422</width>
+    <height>422</height>
+   </rect>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="ctkCollapsibleButton" name="inputsCollapsibleButton">
+     <property name="text">
+      <string>Data I/O</string>
+     </property>
+     <layout class="QFormLayout" name="formLayout_2">
+      <item row="0" column="0">
+       <widget class="QLabel" name="label">
+        <property name="text">
+         <string>Input volume:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="qMRMLNodeComboBox" name="inputSelector">
+        <property name="toolTip">
+         <string>Pick the input to the algorithm.</string>
+        </property>
+        <property name="nodeTypes">
+         <stringlist notr="true">
+          <string>vtkMRMLScalarVolumeNode</string>
+         </stringlist>
+        </property>
+        <property name="showChildNodeTypes">
+         <bool>false</bool>
+        </property>
+        <property name="addEnabled">
+         <bool>false</bool>
+        </property>
+        <property name="removeEnabled">
+         <bool>false</bool>
+        </property>
+        <property name="SlicerParameterName" stdset="0">
+         <string>inputVolume</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="inputCurveName">
+        <property name="text">
+         <string>Input centers curve</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="qMRMLNodeComboBox" name="inputCurveSelector">
+        <property name="nodeTypes">
+         <stringlist notr="true">
+          <string>vtkMRMLMarkupsCurveNode</string>
+         </stringlist>
+        </property>
+        <property name="showChildNodeTypes">
+         <bool>false</bool>
+        </property>
+        <property name="noneEnabled">
+         <bool>true</bool>
+        </property>
+        <property name="addEnabled">
+         <bool>true</bool>
+        </property>
+        <property name="removeEnabled">
+         <bool>true</bool>
+        </property>
+        <property name="noneDisplay">
+         <string>Select a Curve</string>
+        </property>
+        <property name="SlicerParameterName" stdset="0">
+         <string>inputCenterCurve</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="outputCentersCurveLabel">
+        <property name="text">
+         <string>Output centers curve</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="qMRMLNodeComboBox" name="outputCurveSelector">
+        <property name="nodeTypes">
+         <stringlist notr="true">
+          <string>vtkMRMLMarkupsCurveNode</string>
+         </stringlist>
+        </property>
+        <property name="showChildNodeTypes">
+         <bool>false</bool>
+        </property>
+        <property name="noneEnabled">
+         <bool>true</bool>
+        </property>
+        <property name="noneDisplay">
+         <string>Select a Curve</string>
+        </property>
+        <property name="SlicerParameterName" stdset="0">
+         <string>outputCenterCurve</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0">
+       <widget class="QLabel" name="inputContourPointsLabel">
+        <property name="text">
+         <string>Input contour points</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="1">
+       <widget class="qMRMLNodeComboBox" name="inputContourPoints">
+        <property name="nodeTypes">
+         <stringlist notr="true">
+          <string>vtkMRMLMarkupsFiducialNode</string>
+         </stringlist>
+        </property>
+        <property name="showChildNodeTypes">
+         <bool>false</bool>
+        </property>
+        <property name="noneEnabled">
+         <bool>true</bool>
+        </property>
+        <property name="noneDisplay">
+         <string>Select a Point List</string>
+        </property>
+        <property name="SlicerParameterName" stdset="0">
+         <string>inputContourPoint</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="0">
+       <widget class="QLabel" name="outputContourPointsLabel">
+        <property name="text">
+         <string>Output contour points</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="1">
+       <widget class="qMRMLNodeComboBox" name="outputContourPoints">
+        <property name="nodeTypes">
+         <stringlist notr="true">
+          <string>vtkMRMLMarkupsFiducialNode</string>
+         </stringlist>
+        </property>
+        <property name="showChildNodeTypes">
+         <bool>false</bool>
+        </property>
+        <property name="noneEnabled">
+         <bool>true</bool>
+        </property>
+        <property name="noneDisplay">
+         <string>Select a Point List</string>
+        </property>
+        <property name="SlicerParameterName" stdset="0">
+         <string>outputContourPoint</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="ctkCollapsibleButton" name="configurationCollapsibleButton">
+     <property name="text">
+      <string>Configuration</string>
+     </property>
+     <layout class="QFormLayout" name="formLayout_4">
+      <item row="0" column="0">
+       <widget class="QLabel" name="label_2">
+        <property name="text">
+         <string>Starting point</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="qMRMLNodeComboBox" name="startingPointSelector">
+        <property name="toolTip">
+         <string/>
+        </property>
+        <property name="nodeTypes">
+         <stringlist notr="true">
+          <string>vtkMRMLMarkupsFiducialNode</string>
+         </stringlist>
+        </property>
+        <property name="showChildNodeTypes">
+         <bool>false</bool>
+        </property>
+        <property name="noneEnabled">
+         <bool>true</bool>
+        </property>
+        <property name="addEnabled">
+         <bool>true</bool>
+        </property>
+        <property name="removeEnabled">
+         <bool>true</bool>
+        </property>
+        <property name="noneDisplay">
+         <string>Select a Starting Point</string>
+        </property>
+        <property name="SlicerParameterName" stdset="0">
+         <string>startingPoint</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="label_5">
+        <property name="text">
+         <string>Direction point</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="qMRMLNodeComboBox" name="directionPointSelector">
+        <property name="toolTip">
+         <string/>
+        </property>
+        <property name="nodeTypes">
+         <stringlist notr="true">
+          <string>vtkMRMLMarkupsFiducialNode</string>
+         </stringlist>
+        </property>
+        <property name="showChildNodeTypes">
+         <bool>false</bool>
+        </property>
+        <property name="noneEnabled">
+         <bool>true</bool>
+        </property>
+        <property name="addEnabled">
+         <bool>true</bool>
+        </property>
+        <property name="removeEnabled">
+         <bool>true</bool>
+        </property>
+        <property name="noneDisplay">
+         <string>Select a Direction Point</string>
+        </property>
+        <property name="SlicerParameterName" stdset="0">
+         <string>directionPoint</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="inlierPointsLabel">
+        <property name="text">
+         <string>Inlier points (%)</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="ctkSliderWidget" name="inlierPointsSliderWidget">
+        <property name="maximum">
+         <double>100.000000000000000</double>
+        </property>
+        <property name="value">
+         <double>60.000000000000000</double>
+        </property>
+        <property name="SlicerParameterName" stdset="0">
+         <string>percentInlierPoints</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0">
+       <widget class="QLabel" name="thresholdLabel">
+        <property name="text">
+         <string>Threshold (%)</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="1">
+       <widget class="ctkSliderWidget" name="thresholdSliderWidget">
+        <property name="maximum">
+         <double>100.000000000000000</double>
+        </property>
+        <property name="value">
+         <double>20.000000000000000</double>
+        </property>
+        <property name="SlicerParameterName" stdset="0">
+         <string>percentThreshold</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="0">
+       <widget class="QLabel" name="startingRadiusLabel">
+        <property name="text">
+         <string>Starting radius (mm)</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="1">
+       <widget class="QDoubleSpinBox" name="startingRadiusDoubleSpinBox">
+        <property name="maximum">
+         <double>100.000000000000000</double>
+        </property>
+        <property name="singleStep">
+         <double>0.100000000000000</double>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="applyButton">
+     <property name="enabled">
+      <bool>true</bool>
+     </property>
+     <property name="toolTip">
+      <string>Run the algorithm.</string>
+     </property>
+     <property name="text">
+      <string>Apply</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <spacer name="verticalSpacer">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>40</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>ctkCollapsibleButton</class>
+   <extends>QWidget</extends>
+   <header>ctkCollapsibleButton.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>ctkSliderWidget</class>
+   <extends>QWidget</extends>
+   <header>ctkSliderWidget.h</header>
+  </customwidget>
+  <customwidget>
+   <class>qMRMLNodeComboBox</class>
+   <extends>QWidget</extends>
+   <header>qMRMLNodeComboBox.h</header>
+  </customwidget>
+  <customwidget>
+   <class>qMRMLWidget</class>
+   <extends>QWidget</extends>
+   <header>qMRMLWidget.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections>
+  <connection>
+   <sender>pulmonary_arteries_segmentor_module</sender>
+   <signal>mrmlSceneChanged(vtkMRMLScene*)</signal>
+   <receiver>inputSelector</receiver>
+   <slot>setMRMLScene(vtkMRMLScene*)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>122</x>
+     <y>132</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>248</x>
+     <y>61</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>pulmonary_arteries_segmentor_module</sender>
+   <signal>mrmlSceneChanged(vtkMRMLScene*)</signal>
+   <receiver>startingPointSelector</receiver>
+   <slot>setMRMLScene(vtkMRMLScene*)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>82</x>
+     <y>135</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>370</x>
+     <y>249</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>pulmonary_arteries_segmentor_module</sender>
+   <signal>mrmlSceneChanged(vtkMRMLScene*)</signal>
+   <receiver>directionPointSelector</receiver>
+   <slot>setMRMLScene(vtkMRMLScene*)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>161</x>
+     <y>8</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>323</x>
+     <y>278</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>pulmonary_arteries_segmentor_module</sender>
+   <signal>mrmlSceneChanged(vtkMRMLScene*)</signal>
+   <receiver>inputCurveSelector</receiver>
+   <slot>setMRMLScene(vtkMRMLScene*)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>210</x>
+     <y>210</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>280</x>
+     <y>81</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>pulmonary_arteries_segmentor_module</sender>
+   <signal>mrmlSceneChanged(vtkMRMLScene*)</signal>
+   <receiver>outputCurveSelector</receiver>
+   <slot>setMRMLScene(vtkMRMLScene*)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>210</x>
+     <y>210</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>280</x>
+     <y>110</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>pulmonary_arteries_segmentor_module</sender>
+   <signal>mrmlSceneChanged(vtkMRMLScene*)</signal>
+   <receiver>inputContourPoints</receiver>
+   <slot>setMRMLScene(vtkMRMLScene*)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>210</x>
+     <y>210</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>280</x>
+     <y>139</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>pulmonary_arteries_segmentor_module</sender>
+   <signal>mrmlSceneChanged(vtkMRMLScene*)</signal>
+   <receiver>outputContourPoints</receiver>
+   <slot>setMRMLScene(vtkMRMLScene*)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>210</x>
+     <y>210</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>280</x>
+     <y>168</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+</ui>
