@@ -1,4 +1,3 @@
-import logging
 import os
 from typing import Annotated, Optional
 
@@ -246,6 +245,8 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
     def _getAllParameters(self) -> list:
         return [self._parameterNode.inputVolume, self._parameterNode.inputCenterCurve, self._parameterNode.outputCenterCurve, self._parameterNode.inputContourPoint, self._parameterNode.outputContourPoint, self._parameterNode.startingPoint, self._parameterNode.directionPoint]
     def _checkCanApply(self, caller=None, event=None) -> None:
+
+        return True # FIXME remove thiS line later
         if self._parameterNode and all(self._getAllParameters()):
             self.ui.applyButton.toolTip = "Compute output volume"
             self.ui.applyButton.enabled = True
@@ -260,14 +261,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         with slicer.util.tryWithErrorDisplay("Failed to compute results.", waitCursor=True):
 
             # Compute output
-            self.logic.process(self.ui.inputSelector.currentNode(), self.ui.outputSelector.currentNode(),
-                               self.ui.imageThresholdSliderWidget.value, self.ui.invertOutputCheckBox.checked)
-
-            # Compute inverted output (if needed)
-            if self.ui.invertedOutputSelector.currentNode():
-                # If additional output volume is selected then result with inverted threshold is written there
-                self.logic.process(self.ui.inputSelector.currentNode(), self.ui.invertedOutputSelector.currentNode(),
-                                   self.ui.imageThresholdSliderWidget.value, not self.ui.invertOutputCheckBox.checked, showResult=False)
+            self.logic.process(self._getAllParameters())
 
 
 #
@@ -293,44 +287,14 @@ class pulmonary_arteries_segmentor_moduleLogic(ScriptedLoadableModuleLogic):
     def getParameterNode(self):
         return pulmonary_arteries_segmentor_moduleParameterNode(super().getParameterNode())
 
-    def process(self,
-                inputVolume: vtkMRMLScalarVolumeNode,
-                outputVolume: vtkMRMLScalarVolumeNode,
-                imageThreshold: float,
-                invert: bool = False,
-                showResult: bool = True) -> None:
-        """
-        Run the processing algorithm.
-        Can be used without GUI widget.
-        :param inputVolume: volume to be thresholded
-        :param outputVolume: thresholding result
-        :param imageThreshold: values above/below this threshold will be set to 0
-        :param invert: if True then values above the threshold will be set to 0, otherwise values below are set to 0
-        :param showResult: show output volume in slice viewers
-        """
-
-        if not inputVolume or not outputVolume:
-            raise ValueError("Input or output volume is invalid")
-
-        import time
-        startTime = time.time()
-        logging.info('Processing started')
-
-        # Compute the thresholded output volume using the "Threshold Scalar Volume" CLI module
-        cliParams = {
-            'InputVolume': inputVolume.GetID(),
-            'OutputVolume': outputVolume.GetID(),
-            'ThresholdValue': imageThreshold,
-            'ThresholdType': 'Above' if invert else 'Below'
-        }
-        cliNode = slicer.cli.run(slicer.modules.thresholdscalarvolume, None, cliParams, wait_for_completion=True, update_display=showResult)
-        # We don't need the CLI module node anymore, remove it to not clutter the scene with it
-        slicer.mrmlScene.RemoveNode(cliNode)
-
-        stopTime = time.time()
-        logging.info(f'Processing completed in {stopTime-startTime:.2f} seconds')
-
-
+    def process(self, params : list) -> None:
+        for i, param in enumerate(params):
+            try:
+                if isinstance(param, vtkMRMLMarkupsFiducialNode):
+                    print(f"PARAM {i}: {param.GetNumberOfControlPoints()}")
+                    print(param.__dict__())
+            except Exception as e:
+                print(e)
 #
 # pulmonary_arteries_segmentor_moduleTest
 #
