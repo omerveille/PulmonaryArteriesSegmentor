@@ -343,6 +343,9 @@
         <property name="singleStep">
          <double>0.100000000000000</double>
         </property>
+        <property name="SlicerParameterName" stdset="0">
+         <string>startingRadius</string>
+        </property>
        </widget>
       </item>
      </layout>

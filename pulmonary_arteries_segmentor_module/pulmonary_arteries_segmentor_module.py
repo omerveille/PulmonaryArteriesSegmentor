@@ -1,10 +1,12 @@
 import os
 from typing import Annotated, Optional
 
+import numpy as np
 import vtk
 
 import slicer
-from slicer.ScriptedLoadableModule import (ScriptedLoadableModuleWidget, ScriptedLoadableModuleLogic, ScriptedLoadableModule, ScriptedLoadableModuleTest)
+from slicer.ScriptedLoadableModule import (ScriptedLoadableModuleWidget, ScriptedLoadableModuleLogic,
+                                           ScriptedLoadableModule, ScriptedLoadableModuleTest)
 from slicer.util import VTKObservationMixin
 from slicer.parameterNodeWrapper import (
     parameterNodeWrapper,
@@ -12,6 +14,9 @@ from slicer.parameterNodeWrapper import (
 )
 
 from slicer import (vtkMRMLScalarVolumeNode, vtkMRMLMarkupsCurveNode, vtkMRMLMarkupsFiducialNode)
+import tempfile
+
+from ransac_slicer.ransac import run_ransac
 
 
 #
@@ -26,7 +31,8 @@ class pulmonary_arteries_segmentor_module(ScriptedLoadableModule):
     def __init__(self, parent):
         ScriptedLoadableModule.__init__(self, parent)
         self.parent.title = "Pulmonary Arteries Segmentor"  # TODO: make this more human readable by adding spaces
-        self.parent.categories = ["Segmentation"]  # TODO: set categories (folders where the module shows up in the module selector)
+        self.parent.categories = [
+            "Segmentation"]  # TODO: set categories (folders where the module shows up in the module selector)
         self.parent.dependencies = []  # TODO: add here list of module names that this module requires
         self.parent.contributors = ["Gabriel Jacquinot"]  # TODO: replace with "Firstname Lastname (Organization)"
         # TODO: update with short description of the module and a link to online module documentation
@@ -118,6 +124,7 @@ class pulmonary_arteries_segmentor_moduleParameterNode:
     directionPoint: vtkMRMLMarkupsFiducialNode
     percentInlierPoints: Annotated[float, WithinRange(0, 100)] = 60.
     percentThreshold: Annotated[float, WithinRange(0, 100)] = 20.
+    startingRadius: float
 
 
 #
@@ -243,10 +250,14 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
             self._checkCanApply()
 
     def _getAllParameters(self) -> list:
-        return [self._parameterNode.inputVolume, self._parameterNode.inputCenterCurve, self._parameterNode.outputCenterCurve, self._parameterNode.inputContourPoint, self._parameterNode.outputContourPoint, self._parameterNode.startingPoint, self._parameterNode.directionPoint]
+        return [self._parameterNode.inputVolume, self._parameterNode.inputCenterCurve,
+                self._parameterNode.outputCenterCurve, self._parameterNode.inputContourPoint,
+                self._parameterNode.outputContourPoint, self._parameterNode.startingPoint,
+                self._parameterNode.directionPoint, self._parameterNode.percentInlierPoints,
+                self._parameterNode.percentThreshold, self._parameterNode.startingRadius]
+
     def _checkCanApply(self, caller=None, event=None) -> None:
 
-        return True # FIXME remove thiS line later
         if self._parameterNode and all(self._getAllParameters()):
             self.ui.applyButton.toolTip = "Compute output volume"
             self.ui.applyButton.enabled = True
@@ -259,7 +270,6 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         Run processing when user clicks "Apply" button.
         """
         with slicer.util.tryWithErrorDisplay("Failed to compute results.", waitCursor=True):
-
             # Compute output
             self.logic.process(self._getAllParameters())
 
@@ -287,14 +297,40 @@ class pulmonary_arteries_segmentor_moduleLogic(ScriptedLoadableModuleLogic):
     def getParameterNode(self):
         return pulmonary_arteries_segmentor_moduleParameterNode(super().getParameterNode())
 
-    def process(self, params : list) -> None:
-        for i, param in enumerate(params):
-            try:
-                if isinstance(param, vtkMRMLMarkupsFiducialNode):
-                    print(f"PARAM {i}: {param.GetNumberOfControlPoints()}")
-                    print(param.__dict__())
-            except Exception as e:
-                print(e)
+    def process(self, params: list) -> None:
+        # [self._parameterNode.inputVolume, self._parameterNode.inputCenterCurve, self._parameterNode.outputCenterCurve, self._parameterNode.inputContourPoint, self._parameterNode.outputContourPoint, self._parameterNode.startingPoint, self._parameterNode.directionPoint]
+        """
+        def run_ransac(input_volume_path, input_centers_curve_path, output_centers_curve_path, input_contour_point_path,
+         output_contour_point_path, starting_point, direction_point, starting_radius, pct_inlier_points, threshold):
+        """
+        input_center_file = tempfile.NamedTemporaryFile(suffix=".mkp.json", delete=False)
+        slicer.util.saveNode(params[1], input_center_file.name)
+        input_center_file.close()
+
+        output_center_file = tempfile.NamedTemporaryFile(suffix=".mkp.json", delete=False)
+        slicer.util.saveNode(params[2], output_center_file.name)
+        output_center_file.close()
+
+        input_contour_file = tempfile.NamedTemporaryFile(suffix=".mkp.json", delete=False)
+        slicer.util.saveNode(params[3], input_contour_file.name)
+        input_contour_file.close()
+
+        output_contour_file = tempfile.NamedTemporaryFile(suffix=".mkp.json", delete=False)
+        slicer.util.saveNode(params[4], output_contour_file.name)
+        output_contour_file.close()
+
+        starting_point = np.array([0, 0, 0])
+        params[5].GetNthFiducialPosition(0, starting_point)
+
+        direction_point = np.array([0, 0, 0])
+        params[6].GetNthFiducialPosition(0, direction_point)
+
+        starting_point, direction_point = starting_point * np.array([-1, -1, 1]), direction_point * np.array(
+            [-1, -1, 1])
+        run_ransac(params[0], input_center_file.name, output_center_file.name, input_contour_file.name,
+                   output_contour_file.name, starting_point, direction_point, params[9], params[7], params[8])
+
+
 #
 # pulmonary_arteries_segmentor_moduleTest
 #
