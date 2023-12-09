@@ -2,12 +2,14 @@
 from .io import (copy_curve)
 from .cylinder_ransac import (track_branch, config)
 from .cylinder import cylinder
+from .volume import volume
 import json
 
 
-def run_ransac(vol, input_centers_curve_path, output_centers_curve_path, input_contour_point_path,
+def run_ransac(input_volume_path, input_centers_curve_path, output_centers_curve_path, input_contour_point_path,
          output_contour_point_path, starting_point, direction_point, starting_radius, pct_inlier_points, threshold):
     # Input volume
+    vol = volume.from_nrrd(input_volume_path)
 
     # JSON file describing the curve
     if input_centers_curve_path != output_centers_curve_path:

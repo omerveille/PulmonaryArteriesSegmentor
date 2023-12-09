@@ -303,6 +303,10 @@ class pulmonary_arteries_segmentor_moduleLogic(ScriptedLoadableModuleLogic):
         def run_ransac(input_volume_path, input_centers_curve_path, output_centers_curve_path, input_contour_point_path,
          output_contour_point_path, starting_point, direction_point, starting_radius, pct_inlier_points, threshold):
         """
+        input_volume_file = tempfile.NamedTemporaryFile(suffix=".nrrd", delete=False)
+        slicer.util.exportNode(params[0], input_volume_file.name)
+        input_volume_file.close()
+        
         input_center_file = tempfile.NamedTemporaryFile(suffix=".mkp.json", delete=False)
         slicer.util.saveNode(params[1], input_center_file.name)
         input_center_file.close()
@@ -320,15 +324,27 @@ class pulmonary_arteries_segmentor_moduleLogic(ScriptedLoadableModuleLogic):
         output_contour_file.close()
 
         starting_point = np.array([0, 0, 0])
-        params[5].GetNthFiducialPosition(0, starting_point)
+        params[5].GetNthControlPointPosition(0, starting_point)
 
         direction_point = np.array([0, 0, 0])
-        params[6].GetNthFiducialPosition(0, direction_point)
+        params[6].GetNthControlPointPosition(0, direction_point)
 
         starting_point, direction_point = starting_point * np.array([-1, -1, 1]), direction_point * np.array(
             [-1, -1, 1])
-        run_ransac(params[0], input_center_file.name, output_center_file.name, input_contour_file.name,
+        run_ransac(input_volume_file.name, input_center_file.name, output_center_file.name, input_contour_file.name,
                    output_contour_file.name, starting_point, direction_point, params[9], params[7], params[8])
+
+        f = open(output_center_file.name, 'r')
+        print(f.read())
+        params[2] = slicer.util.loadMarkups(output_center_file.name)
+        f.close()
+
+        f = open(output_contour_file.name, 'r')
+        print(f.read())
+        params[4] = slicer.util.loadMarkups(output_contour_file.name)
+        f.close()
+        
+
 
 
 #
