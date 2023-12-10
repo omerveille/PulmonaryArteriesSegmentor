@@ -6,7 +6,7 @@ project(PulmonaryArteriesSegmentor)
 # Extension meta-information
 set(EXTENSION_HOMEPAGE "https://www.slicer.org/wiki/Documentation/Nightly/Extensions/PulmonaryArteriesSegmentor")
 set(EXTENSION_CATEGORY "Segmentation")
-set(EXTENSION_CONTRIBUTORS "Gabriel Jacquinot")
+set(EXTENSION_CONTRIBUTORS "Gabriel Jacquinot, Azéline Aillet")
 set(EXTENSION_DESCRIPTION "This is an example of a simple extension")
 set(EXTENSION_ICONURL "https://www.example.com/Slicer/Extensions/PulmonaryArteriesSegmentor.png")
 set(EXTENSION_SCREENSHOTURLS "https://www.example.com/Slicer/Extensions/PulmonaryArteriesSegmentor/Screenshots/1.png")
