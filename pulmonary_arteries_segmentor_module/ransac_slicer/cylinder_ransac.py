@@ -738,7 +738,7 @@ def track_branch(vol, cyl, cfg, centers_curve, output_centers_curve_path, contou
                           'direction': c.direction.tolist(),
 
                           # TODO : Check how to get the true orientation
-                          'orientation': [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0],
+                          'orientation': [-1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, 1.0],
 
                           'selected': True, 'locked': False, 'visibility': True, 'positionStatus': 'defined', }
 
@@ -758,7 +758,7 @@ def track_branch(vol, cyl, cfg, centers_curve, output_centers_curve_path, contou
                               'description': '', 'associatedNodeID': '', 'position': point.tolist(),
 
                               # TODO : Check how to get the true orientation
-                              'orientation': [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0],
+                              'orientation': [-1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, 1.0],
 
                               'selected': True, 'locked': False, 'visibility': True, 'positionStatus': 'defined', }
 

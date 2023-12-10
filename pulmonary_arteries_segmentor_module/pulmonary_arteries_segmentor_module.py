@@ -329,8 +329,8 @@ class pulmonary_arteries_segmentor_moduleLogic(ScriptedLoadableModuleLogic):
         direction_point = np.array([0, 0, 0])
         params[6].GetNthControlPointPosition(0, direction_point)
 
-        starting_point, direction_point = starting_point * np.array([-1, -1, 1]), direction_point * np.array(
-            [-1, -1, 1])
+        # starting_point, direction_point = starting_point * np.array([-1, -1, 1]), direction_point * np.array(
+        #     [-1, -1, 1])
         run_ransac(input_volume_file.name, input_center_file.name, output_center_file.name, input_contour_file.name,
                    output_contour_file.name, starting_point, direction_point, params[9], params[7], params[8])
 

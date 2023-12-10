@@ -24,6 +24,8 @@ def run_ransac(input_volume_path, input_centers_curve_path, output_centers_curve
         centers_curve = json.load(f)
         f.close()
 
+    centers_curve['markups'][0]['coordinateSystem'] = 'RAS'
+
     # FCSV file describing contour points
     f = open(input_contour_point_path)
     contour_points = json.load(f)
@@ -31,6 +33,7 @@ def run_ransac(input_volume_path, input_centers_curve_path, output_centers_curve
 
     contour_points['markups'][0]['display']['opacity'] = 0.4
     contour_points['markups'][0]['display']['pointLabelsVisibility'] = False
+    contour_points['markups'][0]['coordinateSystem'] = 'RAS'
 
     f = open(output_contour_point_path, 'w')
     json.dump(contour_points, f, indent=4)
