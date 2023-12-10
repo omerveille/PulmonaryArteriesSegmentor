@@ -307,16 +307,16 @@ class pulmonary_arteries_segmentor_moduleLogic(ScriptedLoadableModuleLogic):
             _, input_volume_path = tempfile.mkstemp(prefix="input_volume_", suffix=".nrrd", dir=tmpdirname)
             slicer.util.exportNode(params[0], input_volume_path)
 
-            _, input_center_path = tempfile.mkstemp(prefix="input_center_", suffix=".json", dir=None)
+            _, input_center_path = tempfile.mkstemp(prefix="input_center_", suffix=".json", dir=tmpdirname)
             slicer.util.saveNode(params[1], input_center_path)
 
-            _, output_center_path = tempfile.mkstemp(prefix="output_center_", suffix=".json", dir=None)
+            _, output_center_path = tempfile.mkstemp(prefix="output_center_", suffix=".json", dir=tmpdirname)
             slicer.util.saveNode(params[2], output_center_path)
 
-            _, input_contour_path = tempfile.mkstemp(prefix="input_contour_", suffix=".json", dir=None)
+            _, input_contour_path = tempfile.mkstemp(prefix="input_contour_", suffix=".json", dir=tmpdirname)
             slicer.util.saveNode(params[3], input_contour_path)
 
-            _, output_contour_path = tempfile.mkstemp(prefix="output_contour_", suffix=".json", dir=None)
+            _, output_contour_path = tempfile.mkstemp(prefix="output_contour_", suffix=".json", dir=tmpdirname)
             slicer.util.saveNode(params[4], output_contour_path)
 
             starting_point = np.array([0, 0, 0])
@@ -331,20 +331,15 @@ class pulmonary_arteries_segmentor_moduleLogic(ScriptedLoadableModuleLogic):
             with open(output_center_path) as output_center_line:
                 tmp = json.loads(output_center_line.read())
                 points = np.array([controlPoint["position"] for controlPoint in tmp["markups"][0]["controlPoints"]])
-                print(f"center curve shape: {points.shape}")
                 slicer.util.updateMarkupsControlPointsFromArray(params[2], points)
+                params[2].GetDisplayNode().SetTextScale(0)
 
             with open(output_contour_path) as output_contour_points:
                 tmp = json.loads(output_contour_points.read())
                 points = np.array([controlPoint["position"] for controlPoint in tmp["markups"][0]["controlPoints"]])
-                print(f"contour points shape: {points.shape}", flush=True)
                 slicer.util.updateMarkupsControlPointsFromArray(params[4], points)
-
-            _, output_center_path_slicer = tempfile.mkstemp(prefix="output_center_slicer_", suffix=".json", dir=None)
-            slicer.util.saveNode(params[2], output_center_path_slicer)
-
-            _, output_contour_path_slicer = tempfile.mkstemp(prefix="output_contour_slicer_", suffix=".json", dir=None)
-            slicer.util.saveNode(params[4], output_contour_path_slicer)
+                params[4].GetDisplayNode().SetTextScale(0)
+                params[4].GetDisplayNode().SetVisibility(False)
 
 
 #
