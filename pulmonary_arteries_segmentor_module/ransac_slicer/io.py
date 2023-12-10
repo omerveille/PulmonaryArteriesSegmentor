@@ -2,8 +2,6 @@ import numpy as np
 import pandas as pd
 from datetime import date
 import json
-import tempfile
-import slicer
 import nibabel as ni
 import nrrd
 
@@ -257,16 +255,3 @@ def fcsv_to_json(contour_point_path, vol):
         contour_point['markups'][0]['controlPoints'].append(point_dict)
 
     return contour_point
-
-
-def json_from_object(slicer_object) -> dict:
-    """
-    Load a MRMRL object of markup type as a dictionary of its properties
-    :param slicer_object: a slicer MRML markup object
-    :return: a dictionary that contains object properties
-    """
-
-    with tempfile.NamedTemporaryFile(suffix=".mkp.json") as fp:
-        slicer.util.saveNode(slicer_object, fp.name)
-        fp.seek(0)
-        return json.load(fp)

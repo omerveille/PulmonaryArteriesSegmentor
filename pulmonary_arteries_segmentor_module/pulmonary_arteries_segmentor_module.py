@@ -1,3 +1,4 @@
+import json
 import os
 from typing import Annotated, Optional
 
@@ -17,7 +18,6 @@ from slicer import (vtkMRMLScalarVolumeNode, vtkMRMLMarkupsCurveNode, vtkMRMLMar
 import tempfile
 
 from ransac_slicer.ransac import run_ransac
-
 
 #
 # pulmonary_arteries_segmentor_module
@@ -303,48 +303,48 @@ class pulmonary_arteries_segmentor_moduleLogic(ScriptedLoadableModuleLogic):
         def run_ransac(input_volume_path, input_centers_curve_path, output_centers_curve_path, input_contour_point_path,
          output_contour_point_path, starting_point, direction_point, starting_radius, pct_inlier_points, threshold):
         """
-        input_volume_file = tempfile.NamedTemporaryFile(suffix=".nrrd", delete=False)
-        slicer.util.exportNode(params[0], input_volume_file.name)
-        input_volume_file.close()
-        
-        input_center_file = tempfile.NamedTemporaryFile(suffix=".mkp.json", delete=False)
-        slicer.util.saveNode(params[1], input_center_file.name)
-        input_center_file.close()
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            _, input_volume_path = tempfile.mkstemp(prefix="input_volume_", suffix=".nrrd", dir=tmpdirname)
+            slicer.util.exportNode(params[0], input_volume_path)
 
-        output_center_file = tempfile.NamedTemporaryFile(suffix=".mkp.json", delete=False)
-        slicer.util.saveNode(params[2], output_center_file.name)
-        output_center_file.close()
+            _, input_center_path = tempfile.mkstemp(prefix="input_center_", suffix=".json", dir=None)
+            slicer.util.saveNode(params[1], input_center_path)
 
-        input_contour_file = tempfile.NamedTemporaryFile(suffix=".mkp.json", delete=False)
-        slicer.util.saveNode(params[3], input_contour_file.name)
-        input_contour_file.close()
+            _, output_center_path = tempfile.mkstemp(prefix="output_center_", suffix=".json", dir=None)
+            slicer.util.saveNode(params[2], output_center_path)
 
-        output_contour_file = tempfile.NamedTemporaryFile(suffix=".mkp.json", delete=False)
-        slicer.util.saveNode(params[4], output_contour_file.name)
-        output_contour_file.close()
+            _, input_contour_path = tempfile.mkstemp(prefix="input_contour_", suffix=".json", dir=None)
+            slicer.util.saveNode(params[3], input_contour_path)
 
-        starting_point = np.array([0, 0, 0])
-        params[5].GetNthControlPointPosition(0, starting_point)
+            _, output_contour_path = tempfile.mkstemp(prefix="output_contour_", suffix=".json", dir=None)
+            slicer.util.saveNode(params[4], output_contour_path)
 
-        direction_point = np.array([0, 0, 0])
-        params[6].GetNthControlPointPosition(0, direction_point)
+            starting_point = np.array([0, 0, 0])
+            params[5].GetNthControlPointPosition(0, starting_point)
 
-        # starting_point, direction_point = starting_point * np.array([-1, -1, 1]), direction_point * np.array(
-        #     [-1, -1, 1])
-        run_ransac(input_volume_file.name, input_center_file.name, output_center_file.name, input_contour_file.name,
-                   output_contour_file.name, starting_point, direction_point, params[9], params[7], params[8])
+            direction_point = np.array([0, 0, 0])
+            params[6].GetNthControlPointPosition(0, direction_point)
 
-        f = open(output_center_file.name, 'r')
-        print(f.read())
-        params[2] = slicer.util.loadMarkups(output_center_file.name)
-        f.close()
+            run_ransac(input_volume_path, input_center_path, output_center_path, input_contour_path,
+                       output_contour_path, starting_point, direction_point, params[9], params[7], params[8])
 
-        f = open(output_contour_file.name, 'r')
-        print(f.read())
-        params[4] = slicer.util.loadMarkups(output_contour_file.name)
-        f.close()
-        
+            with open(output_center_path) as output_center_line:
+                tmp = json.loads(output_center_line.read())
+                points = np.array([controlPoint["position"] for controlPoint in tmp["markups"][0]["controlPoints"]])
+                print(f"center curve shape: {points.shape}")
+                slicer.util.updateMarkupsControlPointsFromArray(params[2], points)
 
+            with open(output_contour_path) as output_contour_points:
+                tmp = json.loads(output_contour_points.read())
+                points = np.array([controlPoint["position"] for controlPoint in tmp["markups"][0]["controlPoints"]])
+                print(f"contour points shape: {points.shape}", flush=True)
+                slicer.util.updateMarkupsControlPointsFromArray(params[4], points)
+
+            _, output_center_path_slicer = tempfile.mkstemp(prefix="output_center_slicer_", suffix=".json", dir=None)
+            slicer.util.saveNode(params[2], output_center_path_slicer)
+
+            _, output_contour_path_slicer = tempfile.mkstemp(prefix="output_contour_slicer_", suffix=".json", dir=None)
+            slicer.util.saveNode(params[4], output_contour_path_slicer)
 
 
 #
