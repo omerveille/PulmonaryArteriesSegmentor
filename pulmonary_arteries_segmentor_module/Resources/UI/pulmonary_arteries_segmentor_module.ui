@@ -6,376 +6,558 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>422</width>
-    <height>422</height>
+    <width>783</width>
+    <height>768</height>
    </rect>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
-    <widget class="ctkCollapsibleButton" name="inputsCollapsibleButton">
-     <property name="text">
-      <string>Data I/O</string>
+    <widget class="QTabWidget" name="tabWidget">
+     <property name="currentIndex">
+      <number>0</number>
      </property>
-     <layout class="QFormLayout" name="formLayout_2">
-      <item row="0" column="0">
-       <widget class="QLabel" name="label">
-        <property name="text">
-         <string>Input volume:</string>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="1">
-       <widget class="qMRMLNodeComboBox" name="inputSelector">
-        <property name="toolTip">
-         <string>Pick the input to the algorithm.</string>
-        </property>
-        <property name="nodeTypes">
-         <stringlist notr="true">
-          <string>vtkMRMLScalarVolumeNode</string>
-         </stringlist>
-        </property>
-        <property name="showChildNodeTypes">
-         <bool>false</bool>
-        </property>
-        <property name="addEnabled">
-         <bool>false</bool>
-        </property>
-        <property name="removeEnabled">
-         <bool>false</bool>
-        </property>
-        <property name="renameEnabled">
-         <bool>false</bool>
-        </property>
-        <property name="SlicerParameterName" stdset="0">
-         <string>inputVolume</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="0">
-       <widget class="QLabel" name="inputCurveName">
-        <property name="text">
-         <string>Input centers curve</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="1">
-       <widget class="qMRMLNodeComboBox" name="inputCurveSelector">
-        <property name="nodeTypes">
-         <stringlist notr="true">
-          <string>vtkMRMLMarkupsCurveNode</string>
-         </stringlist>
-        </property>
-        <property name="showChildNodeTypes">
-         <bool>false</bool>
-        </property>
-        <property name="baseName">
-         <string>Input center curve</string>
-        </property>
-        <property name="noneEnabled">
-         <bool>true</bool>
-        </property>
-        <property name="addEnabled">
-         <bool>true</bool>
-        </property>
-        <property name="removeEnabled">
-         <bool>true</bool>
-        </property>
-        <property name="renameEnabled">
-         <bool>true</bool>
-        </property>
-        <property name="noneDisplay">
-         <string>Select a Curve</string>
-        </property>
-        <property name="SlicerParameterName" stdset="0">
-         <string>inputCenterCurve</string>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="0">
-       <widget class="QLabel" name="outputCentersCurveLabel">
-        <property name="text">
-         <string>Output centers curve</string>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="1">
-       <widget class="qMRMLNodeComboBox" name="outputCurveSelector">
-        <property name="nodeTypes">
-         <stringlist notr="true">
-          <string>vtkMRMLMarkupsCurveNode</string>
-         </stringlist>
-        </property>
-        <property name="showChildNodeTypes">
-         <bool>false</bool>
-        </property>
-        <property name="baseName">
-         <string>Output center curve</string>
-        </property>
-        <property name="noneEnabled">
-         <bool>true</bool>
-        </property>
-        <property name="renameEnabled">
-         <bool>true</bool>
-        </property>
-        <property name="noneDisplay">
-         <string>Select a Curve</string>
-        </property>
-        <property name="SlicerParameterName" stdset="0">
-         <string>outputCenterCurve</string>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="0">
-       <widget class="QLabel" name="inputContourPointsLabel">
-        <property name="text">
-         <string>Input contour points</string>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="1">
-       <widget class="qMRMLNodeComboBox" name="inputContourPoints">
-        <property name="nodeTypes">
-         <stringlist notr="true">
-          <string>vtkMRMLMarkupsFiducialNode</string>
-         </stringlist>
-        </property>
-        <property name="showChildNodeTypes">
-         <bool>false</bool>
-        </property>
-        <property name="baseName">
-         <string>Input contour points</string>
-        </property>
-        <property name="noneEnabled">
-         <bool>true</bool>
-        </property>
-        <property name="renameEnabled">
-         <bool>true</bool>
-        </property>
-        <property name="noneDisplay">
-         <string>Select a Point List</string>
-        </property>
-        <property name="SlicerParameterName" stdset="0">
-         <string>inputContourPoint</string>
-        </property>
-       </widget>
-      </item>
-      <item row="4" column="0">
-       <widget class="QLabel" name="outputContourPointsLabel">
-        <property name="text">
-         <string>Output contour points</string>
-        </property>
-       </widget>
-      </item>
-      <item row="4" column="1">
-       <widget class="qMRMLNodeComboBox" name="outputContourPoints">
-        <property name="nodeTypes">
-         <stringlist notr="true">
-          <string>vtkMRMLMarkupsFiducialNode</string>
-         </stringlist>
-        </property>
-        <property name="showChildNodeTypes">
-         <bool>false</bool>
-        </property>
-        <property name="baseName">
-         <string>Output contour points</string>
-        </property>
-        <property name="noneEnabled">
-         <bool>true</bool>
-        </property>
-        <property name="renameEnabled">
-         <bool>true</bool>
-        </property>
-        <property name="noneDisplay">
-         <string>Select a Point List</string>
-        </property>
-        <property name="SlicerParameterName" stdset="0">
-         <string>outputContourPoint</string>
-        </property>
-       </widget>
-      </item>
-     </layout>
+     <widget class="QWidget" name="begin">
+      <attribute name="title">
+       <string>Begin</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="verticalLayout_3">
+       <item>
+        <widget class="ctkCollapsibleButton" name="inputsCollapsibleButton">
+         <property name="text">
+          <string>Data I/O</string>
+         </property>
+         <layout class="QFormLayout" name="formLayout">
+          <item row="0" column="0">
+           <widget class="QLabel" name="label">
+            <property name="text">
+             <string>Input volume:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="qMRMLNodeComboBox" name="inputSelector">
+            <property name="toolTip">
+             <string>Pick the input to the algorithm.</string>
+            </property>
+            <property name="nodeTypes">
+             <stringlist notr="true">
+              <string>vtkMRMLScalarVolumeNode</string>
+             </stringlist>
+            </property>
+            <property name="showChildNodeTypes">
+             <bool>false</bool>
+            </property>
+            <property name="addEnabled">
+             <bool>false</bool>
+            </property>
+            <property name="removeEnabled">
+             <bool>false</bool>
+            </property>
+            <property name="renameEnabled">
+             <bool>false</bool>
+            </property>
+            <property name="SlicerParameterName" stdset="0">
+             <string>inputVolume</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="inputCurveName">
+            <property name="text">
+             <string>Input centers curve</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="qMRMLNodeComboBox" name="inputCurveSelector">
+            <property name="nodeTypes">
+             <stringlist notr="true">
+              <string>vtkMRMLMarkupsCurveNode</string>
+             </stringlist>
+            </property>
+            <property name="showChildNodeTypes">
+             <bool>false</bool>
+            </property>
+            <property name="baseName">
+             <string>Input center curve</string>
+            </property>
+            <property name="noneEnabled">
+             <bool>true</bool>
+            </property>
+            <property name="addEnabled">
+             <bool>true</bool>
+            </property>
+            <property name="removeEnabled">
+             <bool>true</bool>
+            </property>
+            <property name="renameEnabled">
+             <bool>true</bool>
+            </property>
+            <property name="noneDisplay">
+             <string>Select a Curve</string>
+            </property>
+            <property name="SlicerParameterName" stdset="0">
+             <string>inputCenterCurve</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="outputCentersCurveLabel">
+            <property name="text">
+             <string>Output centers curve</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <widget class="qMRMLNodeComboBox" name="outputCurveSelector">
+            <property name="nodeTypes">
+             <stringlist notr="true">
+              <string>vtkMRMLMarkupsCurveNode</string>
+             </stringlist>
+            </property>
+            <property name="showChildNodeTypes">
+             <bool>false</bool>
+            </property>
+            <property name="baseName">
+             <string>Output center curve</string>
+            </property>
+            <property name="noneEnabled">
+             <bool>true</bool>
+            </property>
+            <property name="renameEnabled">
+             <bool>true</bool>
+            </property>
+            <property name="noneDisplay">
+             <string>Select a Curve</string>
+            </property>
+            <property name="SlicerParameterName" stdset="0">
+             <string>outputCenterCurve</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="0">
+           <widget class="QLabel" name="inputContourPointsLabel">
+            <property name="text">
+             <string>Input contour points</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="1">
+           <widget class="qMRMLNodeComboBox" name="inputContourPoints">
+            <property name="nodeTypes">
+             <stringlist notr="true">
+              <string>vtkMRMLMarkupsFiducialNode</string>
+             </stringlist>
+            </property>
+            <property name="showChildNodeTypes">
+             <bool>false</bool>
+            </property>
+            <property name="baseName">
+             <string>Input contour points</string>
+            </property>
+            <property name="noneEnabled">
+             <bool>true</bool>
+            </property>
+            <property name="renameEnabled">
+             <bool>true</bool>
+            </property>
+            <property name="noneDisplay">
+             <string>Select a Point List</string>
+            </property>
+            <property name="SlicerParameterName" stdset="0">
+             <string>inputContourPoint</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="0">
+           <widget class="QLabel" name="outputContourPointsLabel">
+            <property name="text">
+             <string>Output contour points</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="1">
+           <widget class="qMRMLNodeComboBox" name="outputContourPoints">
+            <property name="nodeTypes">
+             <stringlist notr="true">
+              <string>vtkMRMLMarkupsFiducialNode</string>
+             </stringlist>
+            </property>
+            <property name="showChildNodeTypes">
+             <bool>false</bool>
+            </property>
+            <property name="baseName">
+             <string>Output contour points</string>
+            </property>
+            <property name="noneEnabled">
+             <bool>true</bool>
+            </property>
+            <property name="renameEnabled">
+             <bool>true</bool>
+            </property>
+            <property name="noneDisplay">
+             <string>Select a Point List</string>
+            </property>
+            <property name="SlicerParameterName" stdset="0">
+             <string>outputContourPoint</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="ctkCollapsibleButton" name="configurationCollapsibleButton">
+         <property name="text">
+          <string>Configuration</string>
+         </property>
+         <layout class="QFormLayout" name="formLayout_2">
+          <item row="0" column="0">
+           <widget class="QLabel" name="label_2">
+            <property name="text">
+             <string>Starting point</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="qMRMLNodeComboBox" name="startingPointSelector">
+            <property name="toolTip">
+             <string/>
+            </property>
+            <property name="nodeTypes">
+             <stringlist notr="true">
+              <string>vtkMRMLMarkupsFiducialNode</string>
+             </stringlist>
+            </property>
+            <property name="showChildNodeTypes">
+             <bool>false</bool>
+            </property>
+            <property name="baseName">
+             <string>Starting point</string>
+            </property>
+            <property name="noneEnabled">
+             <bool>true</bool>
+            </property>
+            <property name="addEnabled">
+             <bool>true</bool>
+            </property>
+            <property name="removeEnabled">
+             <bool>true</bool>
+            </property>
+            <property name="renameEnabled">
+             <bool>true</bool>
+            </property>
+            <property name="noneDisplay">
+             <string>Select a Starting Point</string>
+            </property>
+            <property name="SlicerParameterName" stdset="0">
+             <string>startingPoint</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="label_3">
+            <property name="text">
+             <string>Direction point</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="qMRMLNodeComboBox" name="directionPointSelector">
+            <property name="toolTip">
+             <string/>
+            </property>
+            <property name="nodeTypes">
+             <stringlist notr="true">
+              <string>vtkMRMLMarkupsFiducialNode</string>
+             </stringlist>
+            </property>
+            <property name="showChildNodeTypes">
+             <bool>false</bool>
+            </property>
+            <property name="baseName">
+             <string>Direction point</string>
+            </property>
+            <property name="noneEnabled">
+             <bool>true</bool>
+            </property>
+            <property name="addEnabled">
+             <bool>true</bool>
+            </property>
+            <property name="removeEnabled">
+             <bool>true</bool>
+            </property>
+            <property name="renameEnabled">
+             <bool>true</bool>
+            </property>
+            <property name="noneDisplay">
+             <string>Select a Direction Point</string>
+            </property>
+            <property name="SlicerParameterName" stdset="0">
+             <string>directionPoint</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="inlierPointsLabel">
+            <property name="text">
+             <string>Inlier points (%)</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <widget class="ctkSliderWidget" name="inlierPointsSliderWidget">
+            <property name="maximum">
+             <double>100.000000000000000</double>
+            </property>
+            <property name="value">
+             <double>60.000000000000000</double>
+            </property>
+            <property name="SlicerParameterName" stdset="0">
+             <string>percentInlierPoints</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="0">
+           <widget class="QLabel" name="thresholdLabel">
+            <property name="text">
+             <string>Threshold (%)</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="1">
+           <widget class="ctkSliderWidget" name="thresholdSliderWidget">
+            <property name="maximum">
+             <double>100.000000000000000</double>
+            </property>
+            <property name="value">
+             <double>30.000000000000000</double>
+            </property>
+            <property name="SlicerParameterName" stdset="0">
+             <string>percentThreshold</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="0">
+           <widget class="QLabel" name="startingRadiusLabel">
+            <property name="text">
+             <string>Starting radius (mm)</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="1">
+           <widget class="QDoubleSpinBox" name="startingRadiusDoubleSpinBox">
+            <property name="maximum">
+             <double>100.000000000000000</double>
+            </property>
+            <property name="singleStep">
+             <double>0.100000000000000</double>
+            </property>
+            <property name="SlicerParameterName" stdset="0">
+             <string>startingRadius</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="applyButton">
+         <property name="enabled">
+          <bool>true</bool>
+         </property>
+         <property name="toolTip">
+          <string>Run the algorithm.</string>
+         </property>
+         <property name="text">
+          <string>Apply</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="verticalSpacer_2">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="branches">
+      <attribute name="title">
+       <string>Branches</string>
+      </attribute>
+     </widget>
+     <widget class="QWidget" name="levelset">
+      <attribute name="title">
+       <string>Segmentation</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="verticalLayout_2">
+       <item>
+        <widget class="ctkCollapsibleButton" name="CollapsibleButton">
+         <property name="text">
+          <string>LevelSet Options</string>
+         </property>
+         <layout class="QFormLayout" name="formLayout_3">
+          <item row="0" column="0">
+           <widget class="QLabel" name="label_4">
+            <property name="text">
+             <string>Inflation:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="0">
+           <widget class="QLabel" name="label_5">
+            <property name="text">
+             <string>Segmentation strategy:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="5" column="0">
+           <widget class="QLabel" name="label_6">
+            <property name="text">
+             <string>Segmentation initialization:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="6" column="0">
+           <widget class="QLabel" name="label_7">
+            <property name="text">
+             <string>Segmentation method:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="7" column="0">
+           <widget class="QLabel" name="label_8">
+            <property name="text">
+             <string>Restore default parameters:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="0">
+           <widget class="QLabel" name="label_9">
+            <property name="text">
+             <string>Iterations:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="label_10">
+            <property name="text">
+             <string>Attraction to gradient:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="label_11">
+            <property name="text">
+             <string>Curvature:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="ctkSliderWidget" name="SliderWidget">
+            <property name="decimals">
+             <number>0</number>
+            </property>
+            <property name="singleStep">
+             <double>10.000000000000000</double>
+            </property>
+            <property name="minimum">
+             <double>-100.000000000000000</double>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="ctkSliderWidget" name="SliderWidget_2">
+            <property name="decimals">
+             <number>0</number>
+            </property>
+            <property name="singleStep">
+             <double>10.000000000000000</double>
+            </property>
+            <property name="minimum">
+             <double>-100.000000000000000</double>
+            </property>
+            <property name="value">
+             <double>70.000000000000000</double>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <widget class="ctkSliderWidget" name="SliderWidget_3">
+            <property name="decimals">
+             <number>0</number>
+            </property>
+            <property name="singleStep">
+             <double>10.000000000000000</double>
+            </property>
+            <property name="minimum">
+             <double>-100.000000000000000</double>
+            </property>
+            <property name="value">
+             <double>50.000000000000000</double>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="1">
+           <widget class="QDoubleSpinBox" name="doubleSpinBox">
+            <property name="singleStep">
+             <double>10.000000000000000</double>
+            </property>
+            <property name="value">
+             <double>10.000000000000000</double>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="1">
+           <widget class="QComboBox" name="comboBox"/>
+          </item>
+          <item row="5" column="1">
+           <widget class="QComboBox" name="comboBox_2"/>
+          </item>
+          <item row="6" column="1">
+           <widget class="QComboBox" name="comboBox_3"/>
+          </item>
+          <item row="7" column="1">
+           <widget class="QPushButton" name="pushButton">
+            <property name="text">
+             <string>Restore</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="ctkCollapsibleButton" name="CollapsibleButton_2">
+         <property name="text">
+          <string>Region Growing Options</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="verticalSpacer">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
     </widget>
-   </item>
-   <item>
-    <widget class="ctkCollapsibleButton" name="configurationCollapsibleButton">
-     <property name="text">
-      <string>Configuration</string>
-     </property>
-     <layout class="QFormLayout" name="formLayout_4">
-      <item row="0" column="0">
-       <widget class="QLabel" name="label_2">
-        <property name="text">
-         <string>Starting point</string>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="1">
-       <widget class="qMRMLNodeComboBox" name="startingPointSelector">
-        <property name="toolTip">
-         <string/>
-        </property>
-        <property name="nodeTypes">
-         <stringlist notr="true">
-          <string>vtkMRMLMarkupsFiducialNode</string>
-         </stringlist>
-        </property>
-        <property name="showChildNodeTypes">
-         <bool>false</bool>
-        </property>
-        <property name="baseName">
-         <string>Starting point</string>
-        </property>
-        <property name="noneEnabled">
-         <bool>true</bool>
-        </property>
-        <property name="addEnabled">
-         <bool>true</bool>
-        </property>
-        <property name="removeEnabled">
-         <bool>true</bool>
-        </property>
-        <property name="renameEnabled">
-         <bool>true</bool>
-        </property>
-        <property name="noneDisplay">
-         <string>Select a Starting Point</string>
-        </property>
-        <property name="SlicerParameterName" stdset="0">
-         <string>startingPoint</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="0">
-       <widget class="QLabel" name="label_5">
-        <property name="text">
-         <string>Direction point</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="1">
-       <widget class="qMRMLNodeComboBox" name="directionPointSelector">
-        <property name="toolTip">
-         <string/>
-        </property>
-        <property name="nodeTypes">
-         <stringlist notr="true">
-          <string>vtkMRMLMarkupsFiducialNode</string>
-         </stringlist>
-        </property>
-        <property name="showChildNodeTypes">
-         <bool>false</bool>
-        </property>
-        <property name="baseName">
-         <string>Direction point</string>
-        </property>
-        <property name="noneEnabled">
-         <bool>true</bool>
-        </property>
-        <property name="addEnabled">
-         <bool>true</bool>
-        </property>
-        <property name="removeEnabled">
-         <bool>true</bool>
-        </property>
-        <property name="renameEnabled">
-         <bool>true</bool>
-        </property>
-        <property name="noneDisplay">
-         <string>Select a Direction Point</string>
-        </property>
-        <property name="SlicerParameterName" stdset="0">
-         <string>directionPoint</string>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="0">
-       <widget class="QLabel" name="inlierPointsLabel">
-        <property name="text">
-         <string>Inlier points (%)</string>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="1">
-       <widget class="ctkSliderWidget" name="inlierPointsSliderWidget">
-        <property name="maximum">
-         <double>100.000000000000000</double>
-        </property>
-        <property name="value">
-         <double>60.000000000000000</double>
-        </property>
-        <property name="SlicerParameterName" stdset="0">
-         <string>percentInlierPoints</string>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="0">
-       <widget class="QLabel" name="thresholdLabel">
-        <property name="text">
-         <string>Threshold (%)</string>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="1">
-       <widget class="ctkSliderWidget" name="thresholdSliderWidget">
-        <property name="maximum">
-         <double>100.000000000000000</double>
-        </property>
-        <property name="value">
-         <double>20.000000000000000</double>
-        </property>
-        <property name="SlicerParameterName" stdset="0">
-         <string>percentThreshold</string>
-        </property>
-       </widget>
-      </item>
-      <item row="4" column="0">
-       <widget class="QLabel" name="startingRadiusLabel">
-        <property name="text">
-         <string>Starting radius (mm)</string>
-        </property>
-       </widget>
-      </item>
-      <item row="4" column="1">
-       <widget class="QDoubleSpinBox" name="startingRadiusDoubleSpinBox">
-        <property name="maximum">
-         <double>100.000000000000000</double>
-        </property>
-        <property name="singleStep">
-         <double>0.100000000000000</double>
-        </property>
-        <property name="SlicerParameterName" stdset="0">
-         <string>startingRadius</string>
-        </property>
-       </widget>
-      </item>
-     </layout>
-    </widget>
-   </item>
-   <item>
-    <widget class="QPushButton" name="applyButton">
-     <property name="enabled">
-      <bool>true</bool>
-     </property>
-     <property name="toolTip">
-      <string>Run the algorithm.</string>
-     </property>
-     <property name="text">
-      <string>Apply</string>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <spacer name="verticalSpacer">
-     <property name="orientation">
-      <enum>Qt::Vertical</enum>
-     </property>
-     <property name="sizeHint" stdset="0">
-      <size>
-       <width>20</width>
-       <height>40</height>
-      </size>
-     </property>
-    </spacer>
    </item>
   </layout>
  </widget>
@@ -412,12 +594,12 @@
    <slot>setMRMLScene(vtkMRMLScene*)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>122</x>
-     <y>132</y>
+     <x>391</x>
+     <y>383</y>
     </hint>
     <hint type="destinationlabel">
-     <x>248</x>
-     <y>61</y>
+     <x>460</x>
+     <y>88</y>
     </hint>
    </hints>
   </connection>
@@ -428,12 +610,12 @@
    <slot>setMRMLScene(vtkMRMLScene*)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>82</x>
-     <y>135</y>
+     <x>391</x>
+     <y>383</y>
     </hint>
     <hint type="destinationlabel">
-     <x>370</x>
-     <y>249</y>
+     <x>457</x>
+     <y>274</y>
     </hint>
    </hints>
   </connection>
@@ -444,12 +626,12 @@
    <slot>setMRMLScene(vtkMRMLScene*)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>161</x>
-     <y>8</y>
+     <x>391</x>
+     <y>383</y>
     </hint>
     <hint type="destinationlabel">
-     <x>323</x>
-     <y>278</y>
+     <x>457</x>
+     <y>303</y>
     </hint>
    </hints>
   </connection>
@@ -460,12 +642,12 @@
    <slot>setMRMLScene(vtkMRMLScene*)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>210</x>
-     <y>210</y>
+     <x>391</x>
+     <y>383</y>
     </hint>
     <hint type="destinationlabel">
-     <x>280</x>
-     <y>81</y>
+     <x>460</x>
+     <y>117</y>
     </hint>
    </hints>
   </connection>
@@ -476,12 +658,12 @@
    <slot>setMRMLScene(vtkMRMLScene*)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>210</x>
-     <y>210</y>
+     <x>391</x>
+     <y>383</y>
     </hint>
     <hint type="destinationlabel">
-     <x>280</x>
-     <y>110</y>
+     <x>460</x>
+     <y>146</y>
     </hint>
    </hints>
   </connection>
@@ -492,12 +674,12 @@
    <slot>setMRMLScene(vtkMRMLScene*)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>210</x>
-     <y>210</y>
+     <x>391</x>
+     <y>383</y>
     </hint>
     <hint type="destinationlabel">
-     <x>280</x>
-     <y>139</y>
+     <x>460</x>
+     <y>175</y>
     </hint>
    </hints>
   </connection>
@@ -508,12 +690,12 @@
    <slot>setMRMLScene(vtkMRMLScene*)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>210</x>
-     <y>210</y>
+     <x>391</x>
+     <y>383</y>
     </hint>
     <hint type="destinationlabel">
-     <x>280</x>
-     <y>168</y>
+     <x>460</x>
+     <y>204</y>
     </hint>
    </hints>
   </connection>
