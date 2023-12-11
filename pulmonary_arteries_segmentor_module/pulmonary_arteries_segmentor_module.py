@@ -13,6 +13,7 @@ from slicer.parameterNodeWrapper import (
     parameterNodeWrapper,
     WithinRange,
 )
+from slicer.parameterNodeWrapper import *
 
 from slicer import (vtkMRMLScalarVolumeNode, vtkMRMLMarkupsCurveNode, vtkMRMLMarkupsFiducialNode)
 import tempfile
@@ -115,6 +116,7 @@ class pulmonary_arteries_segmentor_moduleParameterNode:
     thresholdedVolume - The output volume that will contain the thresholded volume.
     invertedVolume - The output volume that will contain the inverted thresholded volume.
     """
+    # Begin tab
     inputVolume: vtkMRMLScalarVolumeNode
     inputCenterCurve: vtkMRMLMarkupsCurveNode
     outputCenterCurve: vtkMRMLMarkupsCurveNode
@@ -123,8 +125,24 @@ class pulmonary_arteries_segmentor_moduleParameterNode:
     startingPoint: vtkMRMLMarkupsFiducialNode
     directionPoint: vtkMRMLMarkupsFiducialNode
     percentInlierPoints: Annotated[float, WithinRange(0, 100)] = 60.
-    percentThreshold: Annotated[float, WithinRange(0, 100)] = 20.
+    percentThreshold: Annotated[float, WithinRange(0, 100)] = 30.
     startingRadius: float
+
+    # Branches tab
+    newDirectionPoint: vtkMRMLMarkupsFiducialNode
+    newPercentInlierPoints: Annotated[float, WithinRange(0, 100)] = 60.
+    newPercentThreshold: Annotated[float, WithinRange(0, 100)] = 30.
+    newStartingRadius: float
+
+    # Segmentation tab
+    valueInflation: Annotated[float, WithinRange(-100, 100)] = 0
+    valueCurvature: Annotated[float, WithinRange(-100, 100)] = 70
+    valueAttractionGradient: Annotated[float, WithinRange(-100, 100)] = 50
+    valueIterations: float = 10
+
+    segmentationStrategy: Annotated[str, Choice(["One vessel per branch", "One vessel per parent child", "One vessel per parent and sub child", "One vessel for whole tree"])] = "One vessel per branch"
+    segmentationInitialization: Annotated[str, Choice(["Colliding Fronts", "Fast Marching"])] = "Colliding Fronts"
+    segmentationMethod: Annotated[str, Choice(["Geodesic", "Curves"])] = "Geodesic"
 
 
 #
@@ -175,6 +193,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
 
         # Buttons
         self.ui.applyButton.connect('clicked(bool)', self.onApplyButton)
+        self.ui.applyButtonNewBranch.connect('clicked(bool)', self.onApplyButtonNewBranch)
 
         # Make sure parameter node is initialized (needed for module reload)
         self.initializeParameterNode()
@@ -249,21 +268,42 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
             self.addObserver(self._parameterNode, vtk.vtkCommand.ModifiedEvent, self._checkCanApply)
             self._checkCanApply()
 
-    def _getAllParameters(self) -> list:
+    def _getParametersBegin(self) -> list:
         return [self._parameterNode.inputVolume, self._parameterNode.inputCenterCurve,
                 self._parameterNode.outputCenterCurve, self._parameterNode.inputContourPoint,
                 self._parameterNode.outputContourPoint, self._parameterNode.startingPoint,
                 self._parameterNode.directionPoint, self._parameterNode.percentInlierPoints,
                 self._parameterNode.percentThreshold, self._parameterNode.startingRadius]
+    
+    def _getParametersNewBranches(self) -> list:
+        return [self._parameterNode.inputVolume, self._parameterNode.inputCenterCurve,
+                self._parameterNode.outputCenterCurve, self._parameterNode.inputContourPoint,
+                self._parameterNode.outputContourPoint, self._parameterNode.startingPoint,
+                self._parameterNode.newDirectionPoint, self._parameterNode.newPercentInlierPoints,
+                self._parameterNode.newPercentThreshold, self._parameterNode.newStartingRadius]
+    
+    def _getParametersSegmentation(self) -> list:
+        return [self._parameterNode.valueInflation, self._parameterNode.valueCurvature,
+                self._parameterNode.valueAttractionGradient, self._parameterNode.valueIterations,
+                self._parameterNode.segmentationStrategy, self._parameterNode.segmentationInitialization,
+                self._parameterNode.segmentationMethod]
 
     def _checkCanApply(self, caller=None, event=None) -> None:
-
-        if self._parameterNode and all(self._getAllParameters()):
+        if self._parameterNode and all(self._getParametersBegin()):
             self.ui.applyButton.toolTip = "Compute output volume"
             self.ui.applyButton.enabled = True
         else:
             self.ui.applyButton.toolTip = "Select all input before starting the algorithm"
             self.ui.applyButton.enabled = False
+
+        if self._parameterNode and all(self._getParametersNewBranches()):
+            self.ui.applyButtonNewBranch.toolTip = "Compute new branch"
+            self.ui.applyButtonNewBranch.enabled = True
+        else:
+            self.ui.applyButtonNewBranch.toolTip = "Select all input before starting the algorithm"
+            self.ui.applyButtonNewBranch.enabled = False
+
+        # TODO FOR tab branches
 
     def onApplyButton(self) -> None:
         """
@@ -271,7 +311,15 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         """
         with slicer.util.tryWithErrorDisplay("Failed to compute results.", waitCursor=True):
             # Compute output
-            self.logic.process(self._getAllParameters())
+            self.logic.processRoot(self._getParametersBegin())
+    
+    def onApplyButtonNewBranch(self) -> None:
+        """
+        Run processing when user clicks "Apply" button.
+        """
+        with slicer.util.tryWithErrorDisplay("Failed to compute results.", waitCursor=True):
+            # Compute output
+            self.logic.processNewBranches(self._getParametersNewBranches())
 
 
 #
@@ -297,7 +345,7 @@ class pulmonary_arteries_segmentor_moduleLogic(ScriptedLoadableModuleLogic):
     def getParameterNode(self):
         return pulmonary_arteries_segmentor_moduleParameterNode(super().getParameterNode())
 
-    def process(self, params: list) -> None:
+    def processRoot(self, params: list) -> None:
         # [self._parameterNode.inputVolume, self._parameterNode.inputCenterCurve, self._parameterNode.outputCenterCurve, self._parameterNode.inputContourPoint, self._parameterNode.outputContourPoint, self._parameterNode.startingPoint, self._parameterNode.directionPoint]
         """
         def run_ransac(input_volume_path, input_centers_curve_path, output_centers_curve_path, input_contour_point_path,
@@ -326,7 +374,45 @@ class pulmonary_arteries_segmentor_moduleLogic(ScriptedLoadableModuleLogic):
             params[6].GetNthControlPointPosition(0, direction_point)
 
             run_ransac(input_volume_path, input_center_path, output_center_path, input_contour_path,
-                       output_contour_path, starting_point, direction_point, params[9], params[7], params[8])
+                       output_contour_path, starting_point, direction_point, params[9], params[7], params[8], False)
+
+            with open(output_center_path) as output_center_line:
+                tmp = json.loads(output_center_line.read())
+                points = np.array([controlPoint["position"] for controlPoint in tmp["markups"][0]["controlPoints"]])
+                slicer.util.updateMarkupsControlPointsFromArray(params[2], points)
+                params[2].GetDisplayNode().SetTextScale(0)
+
+            with open(output_contour_path) as output_contour_points:
+                tmp = json.loads(output_contour_points.read())
+                points = np.array([controlPoint["position"] for controlPoint in tmp["markups"][0]["controlPoints"]])
+                slicer.util.updateMarkupsControlPointsFromArray(params[4], points)
+                params[4].GetDisplayNode().SetTextScale(0)
+                params[4].GetDisplayNode().SetVisibility(False)
+
+    def processNewBranches(self, params: list) -> None:
+        # [self._parameterNode.inputVolume, self._parameterNode.inputCenterCurve, self._parameterNode.outputCenterCurve, self._parameterNode.inputContourPoint, self._parameterNode.outputContourPoint, self._parameterNode.startingPoint, self._parameterNode.directionPoint]
+        """
+        def run_ransac(input_volume_path, input_centers_curve_path, output_centers_curve_path, input_contour_point_path,
+         output_contour_point_path, starting_point, direction_point, starting_radius, pct_inlier_points, threshold):
+        """
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            _, input_volume_path = tempfile.mkstemp(prefix="input_volume_", suffix=".nrrd", dir=tmpdirname)
+            slicer.util.exportNode(params[0], input_volume_path)
+
+            _, output_center_path = tempfile.mkstemp(prefix="output_center_", suffix=".json", dir=tmpdirname)
+            slicer.util.saveNode(params[2], output_center_path)
+
+            _, output_contour_path = tempfile.mkstemp(prefix="output_contour_", suffix=".json", dir=tmpdirname)
+            slicer.util.saveNode(params[4], output_contour_path)
+
+            starting_point = np.array([0, 0, 0])
+            params[5].GetNthControlPointPosition(0, starting_point)
+
+            direction_point = np.array([0, 0, 0])
+            params[6].GetNthControlPointPosition(0, direction_point)
+
+            run_ransac(input_volume_path, output_center_path, output_center_path, output_contour_path,
+                       output_contour_path, starting_point, direction_point, params[9], params[7], params[8], True)
 
             with open(output_center_path) as output_center_line:
                 tmp = json.loads(output_center_line.read())
@@ -397,13 +483,13 @@ class pulmonary_arteries_segmentor_moduleTest(ScriptedLoadableModuleTest):
         logic = pulmonary_arteries_segmentor_moduleLogic()
 
         # Test algorithm with non-inverted threshold
-        logic.process(inputVolume, outputVolume, threshold, True)
+        logic.processRoot(inputVolume, outputVolume, threshold, True)
         outputScalarRange = outputVolume.GetImageData().GetScalarRange()
         self.assertEqual(outputScalarRange[0], inputScalarRange[0])
         self.assertEqual(outputScalarRange[1], threshold)
 
         # Test algorithm with inverted threshold
-        logic.process(inputVolume, outputVolume, threshold, False)
+        logic.processRoot(inputVolume, outputVolume, threshold, False)
         outputScalarRange = outputVolume.GetImageData().GetScalarRange()
         self.assertEqual(outputScalarRange[0], inputScalarRange[0])
         self.assertEqual(outputScalarRange[1], inputScalarRange[1])

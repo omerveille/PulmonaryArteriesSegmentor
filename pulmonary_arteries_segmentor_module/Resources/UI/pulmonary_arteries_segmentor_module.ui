@@ -393,6 +393,165 @@
       <attribute name="title">
        <string>Branches</string>
       </attribute>
+      <layout class="QVBoxLayout" name="verticalLayout_4">
+       <item>
+        <widget class="qMRMLSubjectHierarchyTreeView" name="SubjectHierarchyTreeView">
+         <property name="levelFilter">
+          <stringlist notr="true"/>
+         </property>
+         <property name="nodeTypes">
+          <stringlist notr="true"/>
+         </property>
+         <property name="hideChildNodeTypes">
+          <stringlist notr="true"/>
+         </property>
+         <property name="includeItemAttributeNamesFilter">
+          <stringlist notr="true"/>
+         </property>
+         <property name="includeNodeAttributeNamesFilter">
+          <stringlist notr="true"/>
+         </property>
+         <property name="excludeItemAttributeNamesFilter">
+          <stringlist notr="true"/>
+         </property>
+         <property name="excludeNodeAttributeNamesFilter">
+          <stringlist notr="true"/>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="ctkCollapsibleButton" name="CollapsibleButton_3">
+         <property name="text">
+          <string>New branch</string>
+         </property>
+         <layout class="QFormLayout" name="formLayout_4">
+          <item row="2" column="0">
+           <widget class="QLabel" name="thresholdLabel_2">
+            <property name="text">
+             <string>New threshold (%)</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <widget class="ctkSliderWidget" name="newThresholdSliderWidget">
+            <property name="maximum">
+             <double>100.000000000000000</double>
+            </property>
+            <property name="value">
+             <double>30.000000000000000</double>
+            </property>
+            <property name="SlicerParameterName" stdset="0">
+             <string>newPercentThreshold</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="1">
+           <widget class="QDoubleSpinBox" name="newStartingRadiusDoubleSpinBox">
+            <property name="maximum">
+             <double>100.000000000000000</double>
+            </property>
+            <property name="singleStep">
+             <double>0.100000000000000</double>
+            </property>
+            <property name="SlicerParameterName" stdset="0">
+             <string>newStartingRadius</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="0" colspan="2">
+           <widget class="QPushButton" name="applyButtonNewBranch">
+            <property name="enabled">
+             <bool>true</bool>
+            </property>
+            <property name="toolTip">
+             <string>Run the algorithm.</string>
+            </property>
+            <property name="text">
+             <string>Apply</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="inlierPointsLabel_2">
+            <property name="text">
+             <string>New inlier points (%)</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="0">
+           <widget class="QLabel" name="startingRadiusLabel_2">
+            <property name="text">
+             <string>New starting radius (mm)</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="ctkSliderWidget" name="newInlierPointsSliderWidget">
+            <property name="maximum">
+             <double>100.000000000000000</double>
+            </property>
+            <property name="value">
+             <double>60.000000000000000</double>
+            </property>
+            <property name="SlicerParameterName" stdset="0">
+             <string>newPercentInlierPoints</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="0">
+           <widget class="QLabel" name="label_12">
+            <property name="text">
+             <string>New direction point</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="qMRMLNodeComboBox" name="newDirectionPointSelector">
+            <property name="nodeTypes">
+             <stringlist notr="true">
+              <string>vtkMRMLMarkupsFiducialNode</string>
+             </stringlist>
+            </property>
+            <property name="hideChildNodeTypes">
+             <stringlist notr="true"/>
+            </property>
+            <property name="baseName">
+             <string>New direction point</string>
+            </property>
+            <property name="noneEnabled">
+             <bool>true</bool>
+            </property>
+            <property name="renameEnabled">
+             <bool>true</bool>
+            </property>
+            <property name="interactionNodeSingletonTag">
+             <string notr="true"/>
+            </property>
+            <property name="noneDisplay">
+             <string>Select a new Direction point</string>
+            </property>
+            <property name="SlicerParameterName" stdset="0">
+             <string>newDirectionPoint</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <spacer name="verticalSpacer_3">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
      </widget>
      <widget class="QWidget" name="levelset">
       <attribute name="title">
@@ -412,45 +571,19 @@
             </property>
            </widget>
           </item>
-          <item row="4" column="0">
-           <widget class="QLabel" name="label_5">
-            <property name="text">
-             <string>Segmentation strategy:</string>
+          <item row="0" column="1">
+           <widget class="ctkSliderWidget" name="inflationSliderWidget">
+            <property name="decimals">
+             <number>0</number>
             </property>
-           </widget>
-          </item>
-          <item row="5" column="0">
-           <widget class="QLabel" name="label_6">
-            <property name="text">
-             <string>Segmentation initialization:</string>
+            <property name="singleStep">
+             <double>10.000000000000000</double>
             </property>
-           </widget>
-          </item>
-          <item row="6" column="0">
-           <widget class="QLabel" name="label_7">
-            <property name="text">
-             <string>Segmentation method:</string>
+            <property name="minimum">
+             <double>-100.000000000000000</double>
             </property>
-           </widget>
-          </item>
-          <item row="7" column="0">
-           <widget class="QLabel" name="label_8">
-            <property name="text">
-             <string>Restore default parameters:</string>
-            </property>
-           </widget>
-          </item>
-          <item row="3" column="0">
-           <widget class="QLabel" name="label_9">
-            <property name="text">
-             <string>Iterations:</string>
-            </property>
-           </widget>
-          </item>
-          <item row="2" column="0">
-           <widget class="QLabel" name="label_10">
-            <property name="text">
-             <string>Attraction to gradient:</string>
+            <property name="SlicerParameterName" stdset="0">
+             <string>valueInflation</string>
             </property>
            </widget>
           </item>
@@ -461,21 +594,8 @@
             </property>
            </widget>
           </item>
-          <item row="0" column="1">
-           <widget class="ctkSliderWidget" name="SliderWidget">
-            <property name="decimals">
-             <number>0</number>
-            </property>
-            <property name="singleStep">
-             <double>10.000000000000000</double>
-            </property>
-            <property name="minimum">
-             <double>-100.000000000000000</double>
-            </property>
-           </widget>
-          </item>
           <item row="1" column="1">
-           <widget class="ctkSliderWidget" name="SliderWidget_2">
+           <widget class="ctkSliderWidget" name="curvatureSliderWidget">
             <property name="decimals">
              <number>0</number>
             </property>
@@ -488,10 +608,20 @@
             <property name="value">
              <double>70.000000000000000</double>
             </property>
+            <property name="SlicerParameterName" stdset="0">
+             <string>valueCurvature</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="label_10">
+            <property name="text">
+             <string>Attraction to gradient:</string>
+            </property>
            </widget>
           </item>
           <item row="2" column="1">
-           <widget class="ctkSliderWidget" name="SliderWidget_3">
+           <widget class="ctkSliderWidget" name="attractionGradientSliderWidget">
             <property name="decimals">
              <number>0</number>
             </property>
@@ -504,31 +634,134 @@
             <property name="value">
              <double>50.000000000000000</double>
             </property>
+            <property name="SlicerParameterName" stdset="0">
+             <string>valueAttractionGradient</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="0">
+           <widget class="QLabel" name="label_9">
+            <property name="text">
+             <string>Iterations:</string>
+            </property>
            </widget>
           </item>
           <item row="3" column="1">
-           <widget class="QDoubleSpinBox" name="doubleSpinBox">
+           <widget class="QDoubleSpinBox" name="iterationsDoubleSpinBox">
+            <property name="decimals">
+             <number>0</number>
+            </property>
             <property name="singleStep">
              <double>10.000000000000000</double>
             </property>
             <property name="value">
              <double>10.000000000000000</double>
             </property>
+            <property name="SlicerParameterName" stdset="0">
+             <string>valueIterations</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="0">
+           <widget class="QLabel" name="label_5">
+            <property name="text">
+             <string>Segmentation strategy:</string>
+            </property>
            </widget>
           </item>
           <item row="4" column="1">
-           <widget class="QComboBox" name="comboBox"/>
+           <widget class="QComboBox" name="strategyComboBox">
+            <property name="SlicerParameterName" stdset="0">
+             <string>segmentationStrategy</string>
+            </property>
+            <item>
+             <property name="text">
+              <string>One vessel per branch</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>One vessel per parent child</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>One vessel per parent and sub child</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>One vessel for whole tree</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+          <item row="5" column="0">
+           <widget class="QLabel" name="label_6">
+            <property name="text">
+             <string>Segmentation initialization:</string>
+            </property>
+           </widget>
           </item>
           <item row="5" column="1">
-           <widget class="QComboBox" name="comboBox_2"/>
+           <widget class="QComboBox" name="initializationComboBox">
+            <property name="SlicerParameterName" stdset="0">
+             <string>segmentationInitialization</string>
+            </property>
+            <item>
+             <property name="text">
+              <string>Colliding Fronts</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Fast Marching</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+          <item row="6" column="0">
+           <widget class="QLabel" name="label_7">
+            <property name="text">
+             <string>Segmentation method:</string>
+            </property>
+           </widget>
           </item>
           <item row="6" column="1">
-           <widget class="QComboBox" name="comboBox_3"/>
+           <widget class="QComboBox" name="methodComboBox">
+            <property name="SlicerParameterName" stdset="0">
+             <string>segmentationMethod</string>
+            </property>
+            <item>
+             <property name="text">
+              <string>Geodesic</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Curves</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+          <item row="7" column="0">
+           <widget class="QLabel" name="label_8">
+            <property name="text">
+             <string>Restore default parameters:</string>
+            </property>
+           </widget>
           </item>
           <item row="7" column="1">
-           <widget class="QPushButton" name="pushButton">
+           <widget class="QPushButton" name="restoreButton">
             <property name="text">
              <string>Restore</string>
+            </property>
+           </widget>
+          </item>
+          <item row="8" column="0" colspan="2">
+           <widget class="QPushButton" name="runSegmentation">
+            <property name="text">
+             <string>Run Segmentation</string>
             </property>
            </widget>
           </item>
@@ -583,6 +816,11 @@
    <extends>QWidget</extends>
    <header>qMRMLWidget.h</header>
    <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>qMRMLSubjectHierarchyTreeView</class>
+   <extends>QTreeView</extends>
+   <header>qMRMLSubjectHierarchyTreeView.h</header>
   </customwidget>
  </customwidgets>
  <resources/>
@@ -696,6 +934,22 @@
     <hint type="destinationlabel">
      <x>460</x>
      <y>204</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>pulmonary_arteries_segmentor_module</sender>
+   <signal>mrmlSceneChanged(vtkMRMLScene*)</signal>
+   <receiver>newDirectionPointSelector</receiver>
+   <slot>setMRMLScene(vtkMRMLScene*)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>391</x>
+     <y>383</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>471</x>
+     <y>348</y>
     </hint>
    </hints>
   </connection>
