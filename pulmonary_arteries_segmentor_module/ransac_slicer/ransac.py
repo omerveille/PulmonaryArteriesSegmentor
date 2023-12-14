@@ -25,30 +25,31 @@ def run_ransac(input_volume_path, input_centers_curve_path, output_centers_curve
         centers_curve = json.load(f)
         f.close()
 
-    centers_curve['markups'][0]['coordinateSystem'] = 'RAS'
-
-    # FCSV file describing contour points
     f = open(input_contour_point_path)
     contour_points = json.load(f)
     f.close()
 
+    for i in range(len(centers_curve["markups"][0]["controlPoints"])):
+        centers_curve["markups"][0]["controlPoints"][i]["position"] = (np.array(centers_curve["markups"][0]["controlPoints"][i]["position"]) * np.array([-1, -1, 1])).tolist()
+
+    for i in range(len(contour_points["markups"][0]["controlPoints"])):
+        contour_points["markups"][0]["controlPoints"][i]["position"] = (np.array(contour_points["markups"][0]["controlPoints"][i]["position"]) * np.array([-1, -1, 1])).tolist()
+
     contour_points['markups'][0]['display']['opacity'] = 0.4
     contour_points['markups'][0]['display']['pointLabelsVisibility'] = False
-    contour_points['markups'][0]['coordinateSystem'] = 'RAS'
 
     f = open(output_contour_point_path, 'w')
     json.dump(contour_points, f, indent=4)
     f.close()
 
-    # Input info for branch tracking (in RAS coordinates)
-
     branch = []
-    # Add existing cylinders in the branch
-    for cp in centers_curve['markups'][0]['controlPoints']:
-        branch.append(cylinder(center=np.array(cp['position'])))
 
     # Input info for branch tracking (in RAS coordinates)
     if isNewBranch:
+        # Add existing cylinders in the branch
+        for cp in centers_curve['markups'][0]['controlPoints']:
+            branch.append(cylinder(center=np.array(cp['position'])))
+
         _, cb, idx_cyl = closest_branch(direction_point, [branch])
         branch = cb[:idx_cyl]
         starting_point = cb[idx_cyl].center
@@ -65,4 +66,5 @@ def run_ransac(input_volume_path, input_centers_curve_path, output_centers_curve
     cyl = cylinder(starting_point, init_radius, direction_point, height=0)
 
     # Perform tracking
-    track_branch(vol, cyl, cfg, centers_curve, output_centers_curve_path, contour_points, output_contour_point_path, branch)
+    track_branch(vol, cyl, cfg, centers_curve, output_centers_curve_path,
+                 contour_points, output_contour_point_path, branch)
