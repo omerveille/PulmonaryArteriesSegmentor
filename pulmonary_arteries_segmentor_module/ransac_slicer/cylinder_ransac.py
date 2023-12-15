@@ -700,7 +700,7 @@ def track_cylinder(vol, cyl, cfg):
             break
 
 
-def track_branch(vol, cyl, cfg, centers_curve, output_centers_curve_path, contour_point, output_contour_point_path, branch):
+def track_branch(vol, cyl, cfg, centers_line, contour_points, branch):
     """
     Performs the tracking in a volume, given an input cylinder and a configuration
 
@@ -714,12 +714,6 @@ def track_branch(vol, cyl, cfg, centers_curve, output_centers_curve_path, contou
         output_contour_point_path (str): Results contour points filepath
     """
 
-    # branch = []
-
-    # # Add existing cylinders in the branch
-    # for cp in centers_curve['markups'][0]['controlPoints']:
-    #     branch.append(cylinder.cylinder(center=np.array(cp['position'])))
-
     for _, (c, i) in enumerate(track_cylinder(vol, cyl, cfg)):
         # Criteria for acceptance: Need to be better justified especially third one
         #   1- Valid cylinder (i.shape[0] > 0)
@@ -730,43 +724,11 @@ def track_branch(vol, cyl, cfg, centers_curve, output_centers_curve_path, contou
         if i.shape[0] > 0 and not c.is_redundant(branch):
             branch.append(c)
 
-            centers_curve['markups'][0]['lastUsedControlPointNumber'] += 1
-
-            point_dict = {'id': str(centers_curve['markups'][0]['lastUsedControlPointNumber']),
-                          'label': f'Ransac-Center-{centers_curve["markups"][0]["lastUsedControlPointNumber"]}',
-                          'description': '', 'associatedNodeID': '', 'position': c.center.tolist(),
-                          'direction': c.direction.tolist(),
-
-                          # TODO : Check how to get the true orientation
-                          'orientation': [-1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, 1.0],
-
-                          'selected': True, 'locked': False, 'visibility': True, 'positionStatus': 'defined', }
-
-            centers_curve['markups'][0]['controlPoints'].append(point_dict)
-
-            f_centers = open(output_centers_curve_path, 'w')
-            json.dump(centers_curve, f_centers, indent=4)
-            f_centers.close()
+            centers_line = np.vstack((centers_line, c.center))
 
             for point in i:
-                contour_point['markups'][0]['lastUsedControlPointNumber'] += 1
-
-                point_dict = {'id': str(contour_point['markups'][0]['lastUsedControlPointNumber']),
-                              'label': f'Ransac-Contour-'
-                                       f'{centers_curve["markups"][0]["lastUsedControlPointNumber"]}-'
-                                       f'{contour_point["markups"][0]["lastUsedControlPointNumber"]}',
-                              'description': '', 'associatedNodeID': '', 'position': point.tolist(),
-
-                              # TODO : Check how to get the true orientation
-                              'orientation': [-1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, 1.0],
-
-                              'selected': True, 'locked': False, 'visibility': True, 'positionStatus': 'defined', }
-
-                contour_point['markups'][0]['controlPoints'].append(point_dict)
-
-            f_contour = open(output_contour_point_path, 'w')
-            json.dump(contour_point, f_contour, indent=4)
-            f_contour.close()
+                contour_points = np.vstack((contour_points, point))
 
         else:
             break
+    return centers_line, contour_points

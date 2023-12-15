@@ -355,39 +355,25 @@ class pulmonary_arteries_segmentor_moduleLogic(ScriptedLoadableModuleLogic):
             _, input_volume_path = tempfile.mkstemp(prefix="input_volume_", suffix=".nrrd", dir=tmpdirname)
             slicer.util.exportNode(params[0], input_volume_path)
 
-            _, input_center_path = tempfile.mkstemp(prefix="input_center_", suffix=".json", dir=tmpdirname)
-            slicer.util.saveNode(params[1], input_center_path)
+            input_center_line = slicer.util.arrayFromMarkupsControlPoints(params[1])
 
-            _, output_center_path = tempfile.mkstemp(prefix="output_center_", suffix=".json", dir=tmpdirname)
-            slicer.util.saveNode(params[2], output_center_path)
-
-            _, input_contour_path = tempfile.mkstemp(prefix="input_contour_", suffix=".json", dir=tmpdirname)
-            slicer.util.saveNode(params[3], input_contour_path)
-
-            _, output_contour_path = tempfile.mkstemp(prefix="output_contour_", suffix=".json", dir=tmpdirname)
-            slicer.util.saveNode(params[4], output_contour_path)
+            input_contour_points = slicer.util.arrayFromMarkupsControlPoints(params[3])
 
             starting_point = np.array([0, 0, 0])
             params[5].GetNthControlPointPosition(0, starting_point)
 
             direction_point = np.array([0, 0, 0])
             params[6].GetNthControlPointPosition(0, direction_point)
+            
+            output_center_line, output_contour_points = run_ransac(input_volume_path, input_center_line, input_contour_points,
+                       starting_point, direction_point, params[9], params[7], params[8], False)
 
-            run_ransac(input_volume_path, input_center_path, output_center_path, input_contour_path,
-                       output_contour_path, starting_point, direction_point, params[9], params[7], params[8], False)
+            slicer.util.updateMarkupsControlPointsFromArray(params[2], output_center_line)
+            params[2].GetDisplayNode().SetTextScale(0)
 
-            with open(output_center_path) as output_center_line:
-                tmp = json.loads(output_center_line.read())
-                points = np.array([controlPoint["position"] for controlPoint in tmp["markups"][0]["controlPoints"]])
-                slicer.util.updateMarkupsControlPointsFromArray(params[2], points)
-                params[2].GetDisplayNode().SetTextScale(0)
-
-            with open(output_contour_path) as output_contour_points:
-                tmp = json.loads(output_contour_points.read())
-                points = np.array([controlPoint["position"] for controlPoint in tmp["markups"][0]["controlPoints"]])
-                slicer.util.updateMarkupsControlPointsFromArray(params[4], points)
-                params[4].GetDisplayNode().SetTextScale(0)
-                params[4].GetDisplayNode().SetVisibility(False)
+            slicer.util.updateMarkupsControlPointsFromArray(params[4], output_contour_points)
+            params[4].GetDisplayNode().SetTextScale(0)
+            params[4].GetDisplayNode().SetVisibility(False)
 
     def processNewBranches(self, params: list) -> None:
         # [self._parameterNode.inputVolume, self._parameterNode.inputCenterCurve, self._parameterNode.outputCenterCurve, self._parameterNode.inputContourPoint, self._parameterNode.outputContourPoint, self._parameterNode.startingPoint, self._parameterNode.directionPoint]
@@ -399,11 +385,9 @@ class pulmonary_arteries_segmentor_moduleLogic(ScriptedLoadableModuleLogic):
             _, input_volume_path = tempfile.mkstemp(prefix="input_volume_", suffix=".nrrd", dir=tmpdirname)
             slicer.util.exportNode(params[0], input_volume_path)
 
-            _, output_center_path = tempfile.mkstemp(prefix="output_center_", suffix=".json", dir=tmpdirname)
-            slicer.util.saveNode(params[2], output_center_path)
+            output_center_line = slicer.util.arrayFromMarkupsControlPoints(params[2])
 
-            _, output_contour_path = tempfile.mkstemp(prefix="output_contour_", suffix=".json", dir=tmpdirname)
-            slicer.util.saveNode(params[4], output_contour_path)
+            output_contour_points = slicer.util.arrayFromMarkupsControlPoints(params[4])
 
             starting_point = np.array([0, 0, 0])
             params[5].GetNthControlPointPosition(0, starting_point)
@@ -411,21 +395,19 @@ class pulmonary_arteries_segmentor_moduleLogic(ScriptedLoadableModuleLogic):
             direction_point = np.array([0, 0, 0])
             params[6].GetNthControlPointPosition(0, direction_point)
 
-            run_ransac(input_volume_path, output_center_path, output_center_path, output_contour_path,
-                       output_contour_path, starting_point, direction_point, params[9], params[7], params[8], True)
+            output_center_line, output_contour_points = run_ransac(input_volume_path, output_center_line, output_contour_points,
+                       starting_point, direction_point, params[9], params[7], params[8], True)
 
-            with open(output_center_path) as output_center_line:
-                tmp = json.loads(output_center_line.read())
-                points = np.array([controlPoint["position"] for controlPoint in tmp["markups"][0]["controlPoints"]])
-                slicer.util.updateMarkupsControlPointsFromArray(params[2], points)
-                params[2].GetDisplayNode().SetTextScale(0)
+            new_output_center_line = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsCurveNode")
+            slicer.util.updateMarkupsControlPointsFromArray(new_output_center_line, output_center_line)
+            new_output_center_line.GetDisplayNode().SetTextScale(0)
+            params[2].GetDisplayNode().SetVisibility(False)
 
-            with open(output_contour_path) as output_contour_points:
-                tmp = json.loads(output_contour_points.read())
-                points = np.array([controlPoint["position"] for controlPoint in tmp["markups"][0]["controlPoints"]])
-                slicer.util.updateMarkupsControlPointsFromArray(params[4], points)
-                params[4].GetDisplayNode().SetTextScale(0)
-                params[4].GetDisplayNode().SetVisibility(False)
+            new_output_countour_points = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsFiducialNode")
+            slicer.util.updateMarkupsControlPointsFromArray(new_output_countour_points, output_contour_points)
+            new_output_countour_points.GetDisplayNode().SetTextScale(0)
+            new_output_countour_points.GetDisplayNode().SetVisibility(False)
+            params[4].GetDisplayNode().SetVisibility(False)
 
 
 #
