@@ -502,6 +502,7 @@ def closest_branch(p, ba):
     Returns:
         np.array(dtype=np.float64): Minimum square distance
         list: Closest branch
+        int: Index to the closest branch
         int: Index returned by dist_to_branch
     """
 
@@ -510,13 +511,17 @@ def closest_branch(p, ba):
 
     d_min, closest = dist_to_branch(p, ba[0])
     bc = ba[0]
+    idx_bc = 0
+    idx_curr = 0
 
     for b in ba[1:]:
+        idx_curr += 1
         d, cp = dist_to_branch(p, b)
 
         if d < d_min:
             bc = b
+            idx_bc = idx_curr
             d_min = d
             closest = cp
 
-    return d_min, bc, closest
+    return d_min, bc, idx_bc, closest

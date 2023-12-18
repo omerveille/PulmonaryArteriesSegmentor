@@ -18,6 +18,8 @@ from slicer.parameterNodeWrapper import *
 from slicer import (vtkMRMLScalarVolumeNode, vtkMRMLMarkupsCurveNode, vtkMRMLMarkupsFiducialNode)
 import tempfile
 
+import networkx as nx
+
 from ransac_slicer.ransac import run_ransac
 
 #
@@ -163,6 +165,8 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         self.logic = None
         self._parameterNode = None
         self._parameterNodeGuiTag = None
+        self.branch_list = []
+        self.branch_graph = nx.Graph()
 
     def setup(self) -> None:
         """
@@ -311,7 +315,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         """
         with slicer.util.tryWithErrorDisplay("Failed to compute results.", waitCursor=True):
             # Compute output
-            self.logic.processRoot(self._getParametersBegin())
+            self.branch_list, self.branch_graph = self.logic.processRoot(self._getParametersBegin(), self.branch_list, self.branch_graph)
     
     def onApplyButtonNewBranch(self) -> None:
         """
@@ -319,7 +323,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         """
         with slicer.util.tryWithErrorDisplay("Failed to compute results.", waitCursor=True):
             # Compute output
-            self.logic.processNewBranches(self._getParametersNewBranches())
+            self.branch_list, self.branch_graph = self.logic.processNewBranches(self._getParametersNewBranches(), self.branch_list, self.branch_graph)
 
 
 #
@@ -345,7 +349,7 @@ class pulmonary_arteries_segmentor_moduleLogic(ScriptedLoadableModuleLogic):
     def getParameterNode(self):
         return pulmonary_arteries_segmentor_moduleParameterNode(super().getParameterNode())
 
-    def processRoot(self, params: list) -> None:
+    def processRoot(self, params: list, branch_list: list, branch_graph: nx.Graph) -> None:
         # [self._parameterNode.inputVolume, self._parameterNode.inputCenterCurve, self._parameterNode.outputCenterCurve, self._parameterNode.inputContourPoint, self._parameterNode.outputContourPoint, self._parameterNode.startingPoint, self._parameterNode.directionPoint]
         """
         def run_ransac(input_volume_path, input_centers_curve_path, output_centers_curve_path, input_contour_point_path,
@@ -354,10 +358,6 @@ class pulmonary_arteries_segmentor_moduleLogic(ScriptedLoadableModuleLogic):
         with tempfile.TemporaryDirectory() as tmpdirname:
             _, input_volume_path = tempfile.mkstemp(prefix="input_volume_", suffix=".nrrd", dir=tmpdirname)
             slicer.util.exportNode(params[0], input_volume_path)
-
-            input_center_line = slicer.util.arrayFromMarkupsControlPoints(params[1])
-
-            input_contour_points = slicer.util.arrayFromMarkupsControlPoints(params[3])
 
             starting_point = np.array([0, 0, 0])
             params[5].GetNthControlPointPosition(0, starting_point)
@@ -365,17 +365,13 @@ class pulmonary_arteries_segmentor_moduleLogic(ScriptedLoadableModuleLogic):
             direction_point = np.array([0, 0, 0])
             params[6].GetNthControlPointPosition(0, direction_point)
             
-            output_center_line, output_contour_points = run_ransac(input_volume_path, input_center_line, input_contour_points,
-                       starting_point, direction_point, params[9], params[7], params[8], False)
+            branch_list, branch_graph = run_ransac(input_volume_path, starting_point, direction_point, params[9],
+                                                                                              params[7], params[8], False, branch_list, branch_graph)
 
-            slicer.util.updateMarkupsControlPointsFromArray(params[2], output_center_line)
-            params[2].GetDisplayNode().SetTextScale(0)
+            print(f"number of nodes: {branch_graph.number_of_nodes()} and number of edges: {branch_graph.number_of_edges()}")
+            return branch_list, branch_graph
 
-            slicer.util.updateMarkupsControlPointsFromArray(params[4], output_contour_points)
-            params[4].GetDisplayNode().SetTextScale(0)
-            params[4].GetDisplayNode().SetVisibility(False)
-
-    def processNewBranches(self, params: list) -> None:
+    def processNewBranches(self, params: list, branch_list: list, branch_graph: nx.Graph) -> None:
         # [self._parameterNode.inputVolume, self._parameterNode.inputCenterCurve, self._parameterNode.outputCenterCurve, self._parameterNode.inputContourPoint, self._parameterNode.outputContourPoint, self._parameterNode.startingPoint, self._parameterNode.directionPoint]
         """
         def run_ransac(input_volume_path, input_centers_curve_path, output_centers_curve_path, input_contour_point_path,
@@ -385,29 +381,17 @@ class pulmonary_arteries_segmentor_moduleLogic(ScriptedLoadableModuleLogic):
             _, input_volume_path = tempfile.mkstemp(prefix="input_volume_", suffix=".nrrd", dir=tmpdirname)
             slicer.util.exportNode(params[0], input_volume_path)
 
-            output_center_line = slicer.util.arrayFromMarkupsControlPoints(params[2])
-
-            output_contour_points = slicer.util.arrayFromMarkupsControlPoints(params[4])
-
             starting_point = np.array([0, 0, 0])
             params[5].GetNthControlPointPosition(0, starting_point)
 
             direction_point = np.array([0, 0, 0])
             params[6].GetNthControlPointPosition(0, direction_point)
 
-            output_center_line, output_contour_points = run_ransac(input_volume_path, output_center_line, output_contour_points,
-                       starting_point, direction_point, params[9], params[7], params[8], True)
+            branch_list, branch_graph = run_ransac(input_volume_path, starting_point, direction_point, params[9],
+                                                                                              params[7], params[8], True, branch_list, branch_graph)
 
-            new_output_center_line = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsCurveNode")
-            slicer.util.updateMarkupsControlPointsFromArray(new_output_center_line, output_center_line)
-            new_output_center_line.GetDisplayNode().SetTextScale(0)
-            params[2].GetDisplayNode().SetVisibility(False)
-
-            new_output_countour_points = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsFiducialNode")
-            slicer.util.updateMarkupsControlPointsFromArray(new_output_countour_points, output_contour_points)
-            new_output_countour_points.GetDisplayNode().SetTextScale(0)
-            new_output_countour_points.GetDisplayNode().SetVisibility(False)
-            params[4].GetDisplayNode().SetVisibility(False)
+            print(f"number of nodes: {branch_graph.number_of_nodes()} and number of edges: {branch_graph.number_of_edges()}")
+            return branch_list, branch_graph
 
 
 #

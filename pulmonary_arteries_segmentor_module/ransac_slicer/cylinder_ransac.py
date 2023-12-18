@@ -700,7 +700,7 @@ def track_cylinder(vol, cyl, cfg):
             break
 
 
-def track_branch(vol, cyl, cfg, centers_line, contour_points, branch):
+def track_branch(vol, cyl, cfg, centers_line, branch):
     """
     Performs the tracking in a volume, given an input cylinder and a configuration
 
@@ -714,6 +714,8 @@ def track_branch(vol, cyl, cfg, centers_line, contour_points, branch):
         output_contour_point_path (str): Results contour points filepath
     """
 
+    contour_points = np.empty((0,3))
+    centers2contour = []
     for _, (c, i) in enumerate(track_cylinder(vol, cyl, cfg)):
         # Criteria for acceptance: Need to be better justified especially third one
         #   1- Valid cylinder (i.shape[0] > 0)
@@ -728,7 +730,12 @@ def track_branch(vol, cyl, cfg, centers_line, contour_points, branch):
 
             for point in i:
                 contour_points = np.vstack((contour_points, point))
+            
+            if len(centers2contour) == 0:
+                centers2contour.append(len(i))
+            else:
+                centers2contour.append(len(i) + centers2contour[-1])
 
         else:
             break
-    return centers_line, contour_points
+    return centers_line, contour_points, centers2contour
