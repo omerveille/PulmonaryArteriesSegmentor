@@ -714,8 +714,7 @@ def track_branch(vol, cyl, cfg, centers_line, branch):
         output_contour_point_path (str): Results contour points filepath
     """
 
-    contour_points = np.empty((0,3))
-    centers2contour = [0]
+    contour_points = []
     for _, (c, i) in enumerate(track_cylinder(vol, cyl, cfg)):
         # Criteria for acceptance: Need to be better justified especially third one
         #   1- Valid cylinder (i.shape[0] > 0)
@@ -728,11 +727,12 @@ def track_branch(vol, cyl, cfg, centers_line, branch):
 
             centers_line = np.vstack((centers_line, c.center))
 
+            tmp_countours = np.empty((0,3))
             for point in i:
-                contour_points = np.vstack((contour_points, point))
+                tmp_countours = np.vstack((tmp_countours, point))
             
-            centers2contour.append(len(i) + centers2contour[-1])
+            contour_points.append(tmp_countours.tolist())
 
         else:
             break
-    return centers_line, contour_points, centers2contour
+    return centers_line, contour_points

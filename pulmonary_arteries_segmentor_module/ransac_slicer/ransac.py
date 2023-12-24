@@ -8,7 +8,7 @@ from ransac_slicer.graph_branches import *
 
 
 def run_ransac(input_volume_path, starting_point, direction_point, starting_radius, pct_inlier_points,
-               threshold, graph_branches, isNewBranch):
+               threshold, graph_branches: Graph_branches, isNewBranch):
     # Input volume
     vol = volume.from_nrrd(input_volume_path)
 
@@ -19,6 +19,9 @@ def run_ransac(input_volume_path, starting_point, direction_point, starting_radi
 
         # Update Graph
         end_center_line = graph_branches.updateGraph(idx_cb, idx_cyl)
+    else:
+        graph_branches.nodes.append(starting_point)
+        end_center_line = np.empty((0,3))
         
     direction_point = direction_point - starting_point
 
@@ -33,21 +36,13 @@ def run_ransac(input_volume_path, starting_point, direction_point, starting_radi
     cyl = cylinder(starting_point, init_radius, direction_point, height=0)
 
     # Perform tracking
-    if isNewBranch:
-        centers_line, contour_points, centers2contour = track_branch(vol, cyl, cfg, end_center_line, graph_branches.branch_total)
-    else:
-        centers_line, contour_points, centers2contour = track_branch(vol, cyl, cfg, np.empty((0,3)), graph_branches.branch_total)
+    centers_line, contour_points = track_branch(vol, cyl, cfg, end_center_line, [elt for branch in graph_branches.branch_list for elt in branch])
 
     new_branch_list = []
     for cp in centers_line:
         new_branch_list.append(cylinder(center=np.array(cp)))
     graph_branches.branch_list.append(new_branch_list)
-    graph_branches.branch_total += new_branch_list
-
-    new_centers_line_markups, new_contour_points_markups = graph_branches.createNewMarkups(centers_line, contour_points)
-    graph_branches.branch_graph.add_node(graph_branches.branch_graph.number_of_nodes(), name="n"+str(graph_branches.branch_graph.number_of_nodes()), centers_line=centers_line, contour_points=contour_points, centers2contour=centers2contour, centers_line_markups=new_centers_line_markups, contour_points_markups=new_contour_points_markups)
-
-    if isNewBranch:
-        graph_branches.branch_graph.add_edge(idx_cb, graph_branches.branch_graph.number_of_nodes()-1)
+    graph_branches.nodes.append(centers_line[-1])
+    graph_branches.createNewBranch((len(graph_branches.nodes) - 2, len(graph_branches.nodes) - 1), centers_line, contour_points)
     
     return graph_branches

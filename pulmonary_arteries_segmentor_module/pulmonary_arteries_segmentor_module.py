@@ -154,7 +154,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         self.logic = None
         self._parameterNode = None
         self._parameterNodeGuiTag = None
-        self.graph_branches = None
+        self.graph_branches = Graph_branches()
 
     def setup(self) -> None:
         """
@@ -348,9 +348,10 @@ class pulmonary_arteries_segmentor_moduleLogic(ScriptedLoadableModuleLogic):
             graph_branches = run_ransac(input_volume_path, starting_point, direction_point, params[5],
                                                    params[3], params[4], graph_branches, isNewBranch)
 
-            print(f"number of nodes: {graph_branches.branch_graph.number_of_nodes()} and number of edges: {graph_branches.branch_graph.number_of_edges()}")
-            print(graph_branches.branch_graph.nodes, graph_branches.branch_graph.edges)
-            print(graph_branches.branch_graph.nodes[0])
+            branch_graph = graph_branches.createNetworkX()
+            print(f"number of nodes: {branch_graph.number_of_nodes()} and number of edges: {branch_graph.number_of_edges()}")
+            print(branch_graph.nodes, branch_graph.edges)
+            print(nx.get_edge_attributes(branch_graph, "centers_line"))
             return graph_branches
 #
 # pulmonary_arteries_segmentor_moduleTest
