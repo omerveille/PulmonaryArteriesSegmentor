@@ -15,12 +15,11 @@ from slicer.parameterNodeWrapper import (
 )
 from slicer.parameterNodeWrapper import *
 
-from slicer import (vtkMRMLScalarVolumeNode, vtkMRMLMarkupsCurveNode, vtkMRMLMarkupsFiducialNode)
+from slicer import (vtkMRMLScalarVolumeNode, vtkMRMLMarkupsCurveNode, vtkMRMLMarkupsFiducialNode, qMRMLSubjectHierarchyTreeView)
 import tempfile
 
-import networkx as nx
-
 from ransac_slicer.ransac import run_ransac
+from ransac_slicer.graph_branches import *
 
 #
 # pulmonary_arteries_segmentor_module
@@ -120,21 +119,11 @@ class pulmonary_arteries_segmentor_moduleParameterNode:
     """
     # Begin tab
     inputVolume: vtkMRMLScalarVolumeNode
-    inputCenterCurve: vtkMRMLMarkupsCurveNode
-    outputCenterCurve: vtkMRMLMarkupsCurveNode
-    inputContourPoint: vtkMRMLMarkupsFiducialNode
-    outputContourPoint: vtkMRMLMarkupsFiducialNode
     startingPoint: vtkMRMLMarkupsFiducialNode
     directionPoint: vtkMRMLMarkupsFiducialNode
     percentInlierPoints: Annotated[float, WithinRange(0, 100)] = 60.
     percentThreshold: Annotated[float, WithinRange(0, 100)] = 30.
     startingRadius: float
-
-    # Branches tab
-    newDirectionPoint: vtkMRMLMarkupsFiducialNode
-    newPercentInlierPoints: Annotated[float, WithinRange(0, 100)] = 60.
-    newPercentThreshold: Annotated[float, WithinRange(0, 100)] = 30.
-    newStartingRadius: float
 
     # Segmentation tab
     valueInflation: Annotated[float, WithinRange(-100, 100)] = 0
@@ -165,8 +154,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         self.logic = None
         self._parameterNode = None
         self._parameterNodeGuiTag = None
-        self.branch_list = []
-        self.branch_graph = nx.Graph()
+        self.graph_branches = None
 
     def setup(self) -> None:
         """
@@ -273,18 +261,9 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
             self._checkCanApply()
 
     def _getParametersBegin(self) -> list:
-        return [self._parameterNode.inputVolume, self._parameterNode.inputCenterCurve,
-                self._parameterNode.outputCenterCurve, self._parameterNode.inputContourPoint,
-                self._parameterNode.outputContourPoint, self._parameterNode.startingPoint,
+        return [self._parameterNode.inputVolume, self._parameterNode.startingPoint,
                 self._parameterNode.directionPoint, self._parameterNode.percentInlierPoints,
                 self._parameterNode.percentThreshold, self._parameterNode.startingRadius]
-    
-    def _getParametersNewBranches(self) -> list:
-        return [self._parameterNode.inputVolume, self._parameterNode.inputCenterCurve,
-                self._parameterNode.outputCenterCurve, self._parameterNode.inputContourPoint,
-                self._parameterNode.outputContourPoint, self._parameterNode.startingPoint,
-                self._parameterNode.newDirectionPoint, self._parameterNode.newPercentInlierPoints,
-                self._parameterNode.newPercentThreshold, self._parameterNode.newStartingRadius]
     
     def _getParametersSegmentation(self) -> list:
         return [self._parameterNode.valueInflation, self._parameterNode.valueCurvature,
@@ -300,7 +279,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
             self.ui.applyButton.toolTip = "Select all input before starting the algorithm"
             self.ui.applyButton.enabled = False
 
-        if self._parameterNode and all(self._getParametersNewBranches()):
+        if self._parameterNode and all(self._getParametersBegin()) and len(self.graph_branches.branch_list) != 0:
             self.ui.applyButtonNewBranch.toolTip = "Compute new branch"
             self.ui.applyButtonNewBranch.enabled = True
         else:
@@ -315,7 +294,8 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         """
         with slicer.util.tryWithErrorDisplay("Failed to compute results.", waitCursor=True):
             # Compute output
-            self.branch_list, self.branch_graph = self.logic.processRoot(self._getParametersBegin(), self.branch_list, self.branch_graph)
+            self.graph_branches = Graph_branches()
+            self.graph_branches = self.logic.processBranch(self._getParametersBegin(), self.graph_branches, False)
     
     def onApplyButtonNewBranch(self) -> None:
         """
@@ -323,7 +303,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         """
         with slicer.util.tryWithErrorDisplay("Failed to compute results.", waitCursor=True):
             # Compute output
-            self.branch_list, self.branch_graph = self.logic.processNewBranches(self._getParametersNewBranches(), self.branch_list, self.branch_graph)
+            self.graph_branches = self.logic.processBranch(self._getParametersBegin(), self.graph_branches, True)
 
 
 #
@@ -349,8 +329,8 @@ class pulmonary_arteries_segmentor_moduleLogic(ScriptedLoadableModuleLogic):
     def getParameterNode(self):
         return pulmonary_arteries_segmentor_moduleParameterNode(super().getParameterNode())
 
-    def processRoot(self, params: list, branch_list: list, branch_graph: nx.Graph) -> None:
-        # [self._parameterNode.inputVolume, self._parameterNode.inputCenterCurve, self._parameterNode.outputCenterCurve, self._parameterNode.inputContourPoint, self._parameterNode.outputContourPoint, self._parameterNode.startingPoint, self._parameterNode.directionPoint]
+    def processBranch(self, params: list, graph_branches: Graph_branches, isNewBranch: bool) -> None:
+        # [self._parameterNode.inputVolume, self._parameterNode.startingPoint, self._parameterNode.directionPoint, self._parameterNode.percentInlierPoints, self._parameterNode.percentThreshold, self._parameterNode.startingRadius]
         """
         def run_ransac(input_volume_path, input_centers_curve_path, output_centers_curve_path, input_contour_point_path,
          output_contour_point_path, starting_point, direction_point, starting_radius, pct_inlier_points, threshold):
@@ -360,40 +340,18 @@ class pulmonary_arteries_segmentor_moduleLogic(ScriptedLoadableModuleLogic):
             slicer.util.exportNode(params[0], input_volume_path)
 
             starting_point = np.array([0, 0, 0])
-            params[5].GetNthControlPointPosition(0, starting_point)
+            params[1].GetNthControlPointPosition(0, starting_point)
 
             direction_point = np.array([0, 0, 0])
-            params[6].GetNthControlPointPosition(0, direction_point)
+            params[2].GetNthControlPointPosition(0, direction_point)
             
-            branch_list, branch_graph = run_ransac(input_volume_path, starting_point, direction_point, params[9],
-                                                                                              params[7], params[8], False, branch_list, branch_graph)
+            graph_branches = run_ransac(input_volume_path, starting_point, direction_point, params[5],
+                                                   params[3], params[4], graph_branches, isNewBranch)
 
-            print(f"number of nodes: {branch_graph.number_of_nodes()} and number of edges: {branch_graph.number_of_edges()}")
-            return branch_list, branch_graph
-
-    def processNewBranches(self, params: list, branch_list: list, branch_graph: nx.Graph) -> None:
-        # [self._parameterNode.inputVolume, self._parameterNode.inputCenterCurve, self._parameterNode.outputCenterCurve, self._parameterNode.inputContourPoint, self._parameterNode.outputContourPoint, self._parameterNode.startingPoint, self._parameterNode.directionPoint]
-        """
-        def run_ransac(input_volume_path, input_centers_curve_path, output_centers_curve_path, input_contour_point_path,
-         output_contour_point_path, starting_point, direction_point, starting_radius, pct_inlier_points, threshold):
-        """
-        with tempfile.TemporaryDirectory() as tmpdirname:
-            _, input_volume_path = tempfile.mkstemp(prefix="input_volume_", suffix=".nrrd", dir=tmpdirname)
-            slicer.util.exportNode(params[0], input_volume_path)
-
-            starting_point = np.array([0, 0, 0])
-            params[5].GetNthControlPointPosition(0, starting_point)
-
-            direction_point = np.array([0, 0, 0])
-            params[6].GetNthControlPointPosition(0, direction_point)
-
-            branch_list, branch_graph = run_ransac(input_volume_path, starting_point, direction_point, params[9],
-                                                                                              params[7], params[8], True, branch_list, branch_graph)
-
-            print(f"number of nodes: {branch_graph.number_of_nodes()} and number of edges: {branch_graph.number_of_edges()}")
-            return branch_list, branch_graph
-
-
+            print(f"number of nodes: {graph_branches.branch_graph.number_of_nodes()} and number of edges: {graph_branches.branch_graph.number_of_edges()}")
+            print(graph_branches.branch_graph.nodes, graph_branches.branch_graph.edges)
+            print(graph_branches.branch_graph.nodes[0])
+            return graph_branches
 #
 # pulmonary_arteries_segmentor_moduleTest
 #
@@ -449,13 +407,13 @@ class pulmonary_arteries_segmentor_moduleTest(ScriptedLoadableModuleTest):
         logic = pulmonary_arteries_segmentor_moduleLogic()
 
         # Test algorithm with non-inverted threshold
-        logic.processRoot(inputVolume, outputVolume, threshold, True)
+        logic.processBranch(inputVolume, outputVolume, threshold, True)
         outputScalarRange = outputVolume.GetImageData().GetScalarRange()
         self.assertEqual(outputScalarRange[0], inputScalarRange[0])
         self.assertEqual(outputScalarRange[1], threshold)
 
         # Test algorithm with inverted threshold
-        logic.processRoot(inputVolume, outputVolume, threshold, False)
+        logic.processBranch(inputVolume, outputVolume, threshold, False)
         outputScalarRange = outputVolume.GetImageData().GetScalarRange()
         self.assertEqual(outputScalarRange[0], inputScalarRange[0])
         self.assertEqual(outputScalarRange[1], inputScalarRange[1])

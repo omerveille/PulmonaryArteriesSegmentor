@@ -4,47 +4,21 @@ from .cylinder_ransac import (track_branch, config)
 from .cylinder import cylinder, closest_branch
 from .volume import volume
 import numpy as np
-import slicer
-import networkx as nx
-
-
-def createNewMarkups(output_center_line, output_contour_points):
-    new_output_center_line = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsCurveNode")
-    slicer.util.updateMarkupsControlPointsFromArray(new_output_center_line, output_center_line)
-    new_output_center_line.GetDisplayNode().SetTextScale(0)
-
-    new_output_countour_points = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsFiducialNode")
-    slicer.util.updateMarkupsControlPointsFromArray(new_output_countour_points, output_contour_points)
-    new_output_countour_points.GetDisplayNode().SetTextScale(0)
-    new_output_countour_points.GetDisplayNode().SetVisibility(False)
-
-    return new_output_center_line, new_output_countour_points
+from ransac_slicer.graph_branches import *
 
 
 def run_ransac(input_volume_path, starting_point, direction_point, starting_radius, pct_inlier_points,
-               threshold, isNewBranch, branch_list: list, branch_graph: nx.Graph):
+               threshold, graph_branches, isNewBranch):
     # Input volume
     vol = volume.from_nrrd(input_volume_path)
 
-    branch = []
     # Input info for branch tracking (in RAS coordinates)
     if isNewBranch:
-        _, cb, idx_cb, idx_cyl = closest_branch(direction_point, branch_list)
-        branch = cb[:idx_cyl] # To check if we can't let everything in the branch
+        _, cb, idx_cb, idx_cyl = closest_branch(direction_point, graph_branches.branch_list)
         starting_point = cb[idx_cyl].center
 
         # Update Graph
-        centers_line = branch_graph.nodes[idx_cb]["centers_line"]
-        contour_points = branch_graph.nodes[idx_cb]["contour_points"]
-        centers2contour = branch_graph.nodes[idx_cb]["centers2contour"]
-        branch_graph.nodes[idx_cb]["centers_line"] = centers_line[:idx_cyl]
-        branch_graph.nodes[idx_cb]["contour_points"] = contour_points[:centers2contour[idx_cyl]]
-        branch_graph.nodes[idx_cb]["centers2contour"] = centers2contour[:idx_cyl]
-        slicer.util.updateMarkupsControlPointsFromArray(branch_graph.nodes[idx_cb]["centers_line_markups"], branch_graph.nodes[idx_cb]["centers_line"])
-        slicer.util.updateMarkupsControlPointsFromArray(branch_graph.nodes[idx_cb]["contour_points_markups"], branch_graph.nodes[idx_cb]["contour_points"])
-        new_centers_line_markups, new_contour_points_markups = createNewMarkups(centers_line[max(0,idx_cyl-1):], contour_points[centers2contour[idx_cyl]:])
-        branch_graph.add_node(branch_graph.number_of_nodes(), name="n"+str(branch_graph.number_of_nodes()), centers_line=centers_line[max(0,idx_cyl-1):], contour_points=contour_points[centers2contour[idx_cyl]:], centers2contour=centers2contour[idx_cyl:], centers_line_markups=new_centers_line_markups, contour_points_markups=new_contour_points_markups)
-        branch_graph.add_edge(idx_cb, branch_graph.number_of_nodes()-1)
+        end_center_line = graph_branches.updateGraph(idx_cb, idx_cyl)
         
     direction_point = direction_point - starting_point
 
@@ -60,19 +34,20 @@ def run_ransac(input_volume_path, starting_point, direction_point, starting_radi
 
     # Perform tracking
     if isNewBranch:
-        centers_line, contour_points, centers2contour = track_branch(vol, cyl, cfg, centers_line[max(0,idx_cyl-1):idx_cyl], branch)
+        centers_line, contour_points, centers2contour = track_branch(vol, cyl, cfg, end_center_line, graph_branches.branch_total)
     else:
-        centers_line, contour_points, centers2contour = track_branch(vol, cyl, cfg, np.empty((0,3)), branch)
+        centers_line, contour_points, centers2contour = track_branch(vol, cyl, cfg, np.empty((0,3)), graph_branches.branch_total)
 
     new_branch_list = []
     for cp in centers_line:
         new_branch_list.append(cylinder(center=np.array(cp)))
-    branch_list.append(new_branch_list)
+    graph_branches.branch_list.append(new_branch_list)
+    graph_branches.branch_total += new_branch_list
 
-    new_centers_line_markups, new_contour_points_markups = createNewMarkups(centers_line, contour_points)
-    branch_graph.add_node(branch_graph.number_of_nodes(), name="n"+str(branch_graph.number_of_nodes()), centers_line=centers_line, contour_points=contour_points, centers2contour=centers2contour, centers_line_markups=new_centers_line_markups, contour_points_markups=new_contour_points_markups)
+    new_centers_line_markups, new_contour_points_markups = graph_branches.createNewMarkups(centers_line, contour_points)
+    graph_branches.branch_graph.add_node(graph_branches.branch_graph.number_of_nodes(), name="n"+str(graph_branches.branch_graph.number_of_nodes()), centers_line=centers_line, contour_points=contour_points, centers2contour=centers2contour, centers_line_markups=new_centers_line_markups, contour_points_markups=new_contour_points_markups)
 
     if isNewBranch:
-        branch_graph.add_edge(idx_cb, branch_graph.number_of_nodes()-1)
+        graph_branches.branch_graph.add_edge(idx_cb, graph_branches.branch_graph.number_of_nodes()-1)
     
-    return branch_list, branch_graph
+    return graph_branches

@@ -469,7 +469,7 @@ def dist_to_branch(p, b):
 
     if len(b) == 1:
         d = np.asarray(p, dtype=float) - b[0].center
-        return np.dot(d, d)
+        return np.dot(d, d), 0
 
     cp = b[0].center
     cn = b[1].center

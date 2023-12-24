@@ -715,7 +715,7 @@ def track_branch(vol, cyl, cfg, centers_line, branch):
     """
 
     contour_points = np.empty((0,3))
-    centers2contour = []
+    centers2contour = [0]
     for _, (c, i) in enumerate(track_cylinder(vol, cyl, cfg)):
         # Criteria for acceptance: Need to be better justified especially third one
         #   1- Valid cylinder (i.shape[0] > 0)
@@ -731,10 +731,7 @@ def track_branch(vol, cyl, cfg, centers_line, branch):
             for point in i:
                 contour_points = np.vstack((contour_points, point))
             
-            if len(centers2contour) == 0:
-                centers2contour.append(len(i))
-            else:
-                centers2contour.append(len(i) + centers2contour[-1])
+            centers2contour.append(len(i) + centers2contour[-1])
 
         else:
             break
