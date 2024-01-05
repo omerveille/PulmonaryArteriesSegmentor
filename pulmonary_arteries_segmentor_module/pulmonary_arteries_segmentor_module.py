@@ -182,7 +182,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
 
         self.branch_tree = Branch_tree()
         begin_tab = self.ui.tabWidget.widget(0)
-        begin_tab.layout().insertWidget(4, self.branch_tree)
+        begin_tab.layout().insertWidget(6, self.branch_tree)
         # self.branch_tree.addTopLevelItem(Branch_tree_item("test"))
 
         self.graph_branches = Graph_branches(self.branch_tree)
@@ -193,8 +193,10 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         self.addObserver(slicer.mrmlScene, slicer.mrmlScene.EndCloseEvent, self.onSceneEndClose)
 
         # Buttons
-        self.ui.applyButton.connect('clicked(bool)', self.onApplyButton)
-        self.ui.applyButtonNewBranch.connect('clicked(bool)', self.onApplyButtonNewBranch)
+        self.ui.createRoot.connect('clicked(bool)', self.createRoot)
+        self.ui.createNewBranch.connect('clicked(bool)', self.createNewBranch)
+        self.ui.clearTree.connect('clicked(bool)', self.graph_branches.clearAll)
+        self.ui.saveTree.connect('clicked(bool)', self.graph_branches.saveNetworkX)
 
         # Make sure parameter node is initialized (needed for module reload)
         self.initializeParameterNode()
@@ -281,32 +283,43 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
                 self._parameterNode.segmentationMethod]
 
     def _checkCanApply(self, caller=None, event=None) -> None:
-        if self._parameterNode and all(self._getParametersBegin()):
-            self.ui.applyButton.toolTip = "Compute output volume"
-            self.ui.applyButton.enabled = True
+        if self._parameterNode and all(self._getParametersBegin()) and len(self.graph_branches.names) == 0:
+            self.ui.createRoot.toolTip = "Create root"
+            self.ui.createRoot.enabled = True
         else:
-            self.ui.applyButton.toolTip = "Select all input before starting the algorithm"
-            self.ui.applyButton.enabled = False
+            self.ui.createRoot.toolTip = "Select all input before creating root"
+            self.ui.createRoot.enabled = False
 
-        if self._parameterNode and all(self._getParametersBegin()) and len(self.graph_branches.branch_list) != 0:
-            self.ui.applyButtonNewBranch.toolTip = "Compute new branch"
-            self.ui.applyButtonNewBranch.enabled = True
+        if self._parameterNode and all(self._getParametersBegin()) and len(self.graph_branches.names) != 0:
+            self.ui.createNewBranch.toolTip = "Create new branch"
+            self.ui.createNewBranch.enabled = True
         else:
-            self.ui.applyButtonNewBranch.toolTip = "Select all input before starting the algorithm"
-            self.ui.applyButtonNewBranch.enabled = False
+            self.ui.createNewBranch.toolTip = "Create root before creating other branches"
+            self.ui.createNewBranch.enabled = False
+
+        if len(self.graph_branches.names) != 0:
+            self.ui.clearTree.toolTip = "Compute new branch"
+            self.ui.clearTree.enabled = True
+            self.ui.saveTree.toolTip = "Compute new branch"
+            self.ui.saveTree.enabled = True
+        else:
+            self.ui.clearTree.toolTip = "Tree is already empty"
+            self.ui.clearTree.enabled = False
+            self.ui.saveTree.toolTip = "There is nothing to save"
+            self.ui.saveTree.enabled = False
 
         # TODO FOR tab branches
 
-    def onApplyButton(self) -> None:
+    def createRoot(self) -> None:
         """
         Run processing when user clicks "Apply" button.
         """
         with slicer.util.tryWithErrorDisplay("Failed to compute results.", waitCursor=True):
             # Compute output
-            self.graph_branches = Graph_branches(self.branch_tree)
             self.graph_branches = self.logic.processBranch(self._getParametersBegin(), self.graph_branches, False)
+            self._checkCanApply()
     
-    def onApplyButtonNewBranch(self) -> None:
+    def createNewBranch(self) -> None:
         """
         Run processing when user clicks "Apply" button.
         """
@@ -357,7 +370,7 @@ class pulmonary_arteries_segmentor_moduleLogic(ScriptedLoadableModuleLogic):
             graph_branches = run_ransac(input_volume_path, starting_point, direction_point, params[5],
                                                    params[3], params[4], graph_branches, isNewBranch)
 
-            branch_graph = graph_branches.createNetworkX()
+            branch_graph = graph_branches.saveNetworkX()
             print(f"number of nodes: {branch_graph.number_of_nodes()} and number of edges: {branch_graph.number_of_edges()}")
             print(branch_graph.nodes, branch_graph.edges)
             print(nx.get_edge_attributes(branch_graph, "centers_line"))

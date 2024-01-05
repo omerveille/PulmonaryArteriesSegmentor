@@ -18,8 +18,6 @@ class Graph_branches():
         self.tree_widget = tree_widget
         self._currentTreeItem = None
         self.tree_widget.connect("itemClicked(QTreeWidgetItem *, int)", self.onItemClicked)
-        self.tree_widget.connect("currentItemChanged(QTreeWidgetItem *), QTreeWidgetItem *)",
-                           lambda current, previous: self.onItemClicked(current, 0))
         self.tree_widget.itemRenamed.connect(self.onItemRenamed)
         self.tree_widget.itemDeleted.connect(self._onDeleteItem)
         self.tree_widget.keyPressed.connect(self.onKeyPressed)
@@ -72,7 +70,7 @@ class Graph_branches():
         return centers_line[idx_cyl:min(idx_cyl+1, len(centers_line)-1)]
     
 
-    def createNetworkX(self):
+    def saveNetworkX(self):
         # Create graph Network X with node = bifurcation and edges = branches
         branch_graph = nx.DiGraph()
 
@@ -81,7 +79,24 @@ class Graph_branches():
         for i, e in enumerate(self.edges):
             branch_graph.add_edge(e[0], e[1], name=self.names[i], centers_line=self.centers_lines[i], contour_points=self.contours_points[i])
 
+        # TODO save graph to file python
         return branch_graph
+    
+    
+    def clearAll(self):
+        self.branch_list = []
+        self.nodes = []
+        self.edges = []
+        self.names = []
+        self.centers_lines = []
+        self.contours_points = []
+
+        size = len(self.centers_line_markups)
+        for _ in range(size):
+            slicer.mrmlScene.RemoveNode(self.centers_line_markups.pop())
+            slicer.mrmlScene.RemoveNode(self.contour_points_markups.pop())
+        
+        self.tree_widget.clear()
 
 
     def onStopInteraction(self):
@@ -96,24 +111,19 @@ class Graph_branches():
     """
         self._currentTreeItem = treeItem
         nodeId = treeItem.nodeId
-        print(self.names, column)
         branch_id = self.names.index(nodeId)
         if column == Tree_column_role.VISIBILITY_CENTER:
-            print(f"center visibility of node {nodeId} is changed")
             is_visible = self.centers_line_markups[branch_id].GetDisplayNode().GetVisibility()
             self.centers_line_markups[branch_id].GetDisplayNode().SetVisibility(not is_visible)
             self.tree_widget._branchDict[nodeId].setIcon(Tree_column_role.VISIBILITY_CENTER, Icons.visibleOff if is_visible else Icons.visibleOn)
         if column == Tree_column_role.VISIBILITY_CONTOUR:
-            print(f"contour visibility of node {nodeId} is changed")
             is_visible = self.contour_points_markups[branch_id].GetDisplayNode().GetVisibility()
             self.contour_points_markups[branch_id].GetDisplayNode().SetVisibility(not is_visible)
             self.tree_widget._branchDict[nodeId].setIcon(Tree_column_role.VISIBILITY_CONTOUR, Icons.visibleOff if is_visible else Icons.visibleOn)
         if column == Tree_column_role.DELETE:
-            print(f"node {nodeId} is deleted from column")
             self._onDeleteItem(treeItem)
 
     def onItemRenamed(self, previous, new):
-        print(f"node {previous} is now {new}", self.names)
         branch_id = self.names.index(previous)
         self.names[branch_id] = new
         self.centers_line_markups[branch_id].SetName(new+"_centers")
@@ -124,7 +134,6 @@ class Graph_branches():
     On delete key pressed, delete the current item if any selected
     """
         if key == qt.Qt.Key_Delete:
-            print(f"node {treeItem.nodeID} is deleted from key")
             self._onDeleteItem(treeItem)
 
     def _onDeleteItem(self, treeItem):
