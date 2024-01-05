@@ -18,8 +18,10 @@ def run_ransac(input_volume_path, starting_point, direction_point, starting_radi
         starting_point = cb[idx_cyl].center
 
         # Update Graph
-        end_center_line = graph_branches.updateGraph(idx_cb, idx_cyl)
+        parent_node = graph_branches.names[idx_cb]
+        end_center_line = graph_branches.updateGraph(idx_cb, idx_cyl, parent_node)
     else:
+        parent_node = None
         graph_branches.nodes.append(starting_point)
         end_center_line = np.empty((0,3))
         
@@ -43,6 +45,6 @@ def run_ransac(input_volume_path, starting_point, direction_point, starting_radi
         new_branch_list.append(cylinder(center=np.array(cp)))
     graph_branches.branch_list.append(new_branch_list)
     graph_branches.nodes.append(centers_line[-1])
-    graph_branches.createNewBranch((len(graph_branches.nodes) - 2, len(graph_branches.nodes) - 1), centers_line, contour_points)
+    graph_branches.createNewBranch((len(graph_branches.nodes) - 2, len(graph_branches.nodes) - 1), centers_line, contour_points, parent_node)
     
     return graph_branches

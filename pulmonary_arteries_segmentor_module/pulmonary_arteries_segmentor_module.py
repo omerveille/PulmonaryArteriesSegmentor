@@ -5,6 +5,7 @@ from typing import Annotated, Optional
 import numpy as np
 import vtk
 
+import qt
 import slicer
 from slicer.ScriptedLoadableModule import (ScriptedLoadableModuleWidget, ScriptedLoadableModuleLogic,
                                            ScriptedLoadableModule, ScriptedLoadableModuleTest)
@@ -18,8 +19,10 @@ from slicer.parameterNodeWrapper import *
 from slicer import (vtkMRMLScalarVolumeNode, vtkMRMLMarkupsCurveNode, vtkMRMLMarkupsFiducialNode, qMRMLSubjectHierarchyTreeView)
 import tempfile
 
+import networkx as nx
 from ransac_slicer.ransac import run_ransac
-from ransac_slicer.graph_branches import *
+from ransac_slicer.graph_branches import Graph_branches
+from ransac_slicer.branch_tree import Branch_tree
 
 #
 # pulmonary_arteries_segmentor_module
@@ -154,7 +157,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         self.logic = None
         self._parameterNode = None
         self._parameterNodeGuiTag = None
-        self.graph_branches = Graph_branches()
+        self.graph_branches = None
 
     def setup(self) -> None:
         """
@@ -177,6 +180,12 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         # in batch mode, without a graphical user interface.
         self.logic = pulmonary_arteries_segmentor_moduleLogic()
 
+        self.branch_tree = Branch_tree()
+        begin_tab = self.ui.tabWidget.widget(0)
+        begin_tab.layout().insertWidget(4, self.branch_tree)
+        # self.branch_tree.addTopLevelItem(Branch_tree_item("test"))
+
+        self.graph_branches = Graph_branches(self.branch_tree)
         # Connections
 
         # These connections ensure that we update parameter node when scene is closed
@@ -294,7 +303,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         """
         with slicer.util.tryWithErrorDisplay("Failed to compute results.", waitCursor=True):
             # Compute output
-            self.graph_branches = Graph_branches()
+            self.graph_branches = Graph_branches(self.branch_tree)
             self.graph_branches = self.logic.processBranch(self._getParametersBegin(), self.graph_branches, False)
     
     def onApplyButtonNewBranch(self) -> None:

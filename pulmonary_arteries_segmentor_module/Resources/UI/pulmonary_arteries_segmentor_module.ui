@@ -240,31 +240,6 @@
         </widget>
        </item>
        <item>
-        <widget class="qMRMLSubjectHierarchyTreeView" name="hierarchyTreeView">
-         <property name="levelFilter">
-          <stringlist notr="true"/>
-         </property>
-         <property name="nodeTypes">
-          <stringlist notr="true"/>
-         </property>
-         <property name="hideChildNodeTypes">
-          <stringlist notr="true"/>
-         </property>
-         <property name="includeItemAttributeNamesFilter">
-          <stringlist notr="true"/>
-         </property>
-         <property name="includeNodeAttributeNamesFilter">
-          <stringlist notr="true"/>
-         </property>
-         <property name="excludeItemAttributeNamesFilter">
-          <stringlist notr="true"/>
-         </property>
-         <property name="excludeNodeAttributeNamesFilter">
-          <stringlist notr="true"/>
-         </property>
-        </widget>
-       </item>
-       <item>
         <spacer name="verticalSpacer_2">
          <property name="orientation">
           <enum>Qt::Vertical</enum>
@@ -542,11 +517,6 @@
    <extends>QWidget</extends>
    <header>qMRMLWidget.h</header>
    <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>qMRMLSubjectHierarchyTreeView</class>
-   <extends>QTreeView</extends>
-   <header>qMRMLSubjectHierarchyTreeView.h</header>
   </customwidget>
  </customwidgets>
  <resources/>
