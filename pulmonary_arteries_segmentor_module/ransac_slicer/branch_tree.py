@@ -1,9 +1,8 @@
 import qt
-import slicer
 
 from .RVXLiverSegmentationUtils import Signal, Icons
 
-class Tree_column_role(object):
+class Tree_column_role:
     NODE_ID = 0
     VISIBILITY_CENTER = 1
     VISIBILITY_CONTOUR = 2
@@ -32,7 +31,7 @@ class Branch_tree_item(qt.QTreeWidgetItem):
     self.updateText()
 
   def updateText(self):
-    self.setText(0, "{}".format(self.nodeId))
+    self.setText(0, f"{self.nodeId}")
 
 class Branch_tree(qt.QTreeWidget):
   """Tree representation of vessel branch nodes.
@@ -71,7 +70,7 @@ class Branch_tree(qt.QTreeWidget):
     self.headerItem().setIcon(Tree_column_role.DELETE, Icons.delete)
 
     # Enable reordering by drag and drop
-    self.setDragEnabled(True)
+    self.setDragEnabled(False)
     self.setDropIndicatorShown(True)
     self.setDragDropMode(qt.QAbstractItemView.InternalMove)
     self.setAccessibleName("branch_tree")
