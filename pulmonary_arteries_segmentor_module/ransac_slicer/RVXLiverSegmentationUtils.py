@@ -10,7 +10,7 @@ import slicer
 import vtk
 
 
-class Icons(object):
+class Icons:
   """ Object responsible for the different icons in the module. The module doesn't have any icons internally but pulls
   icons from slicer and the other modules.
   """
@@ -24,7 +24,7 @@ class Icons(object):
   cut3d = qt.QIcon(":/Icons/Medium/SlicerEditCut.png")
 
 
-class WidgetUtils(object):
+class WidgetUtils:
   """Helper class to extract widgets linked to an existing widget representation
   """
 
@@ -67,7 +67,7 @@ class WidgetUtils(object):
     return hiddenChild
 
 
-class Settings(object):
+class Settings:
   """Helper class to get and set settings in Slicer with RVesselX tag
   """
 
@@ -96,7 +96,7 @@ class Settings(object):
     Settings.setValue(Settings._exportDirectoryKey(), value)
 
 
-class GeometryExporter(object):
+class GeometryExporter:
   """Helper object to export mrml types to given output directory
   """
 
@@ -125,7 +125,7 @@ class GeometryExporter(object):
         outputPath = os.path.join(selectedDir, elementName + formatExtension)
         exportSuccessful = slicer.util.saveNode(elementNode, outputPath)
         if not exportSuccessful:
-          logging.warn("Failed to export file : %s at location %s" % (elementName, outputPath))
+          logging.warn(f"Failed to export file : {elementName} at location {outputPath}")
 
   @staticmethod
   def _elementExportExtension(elementNode):
@@ -507,7 +507,7 @@ def raiseValueErrorIfInvalidType(**kwargs):
 
     # Verify value is of correct instance
     if not isinstance(value, expType):
-      raise ValueError("%s Type error.\nExpected : %s but got %s." % (valueName, expType, type(value)))
+      raise ValueError(f"{valueName} Type error.\nExpected : {expType} but got {type(value)}.")
 
 
 def createDisplayNodeIfNecessary(volumeNode, presetName=None):
@@ -534,7 +534,7 @@ def createDisplayNodeIfNecessary(volumeNode, presetName=None):
   return volumeDisplayNode
 
 
-class Signal(object):
+class Signal:
   """ Qt like signal slot connections. Enables using the same semantics with Slicer as qt.Signal lead to application
   crash.
   (see : https://discourse.slicer.org/t/custom-signal-slots-with-pythonqt/3278/5)

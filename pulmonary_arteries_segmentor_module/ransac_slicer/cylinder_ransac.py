@@ -1,5 +1,4 @@
 import numpy as np
-import json
 import math
 from . import cylinder, helper
 
@@ -730,7 +729,7 @@ def track_branch(vol, cyl, cfg, centers_line, branch):
             tmp_countours = np.empty((0,3))
             for point in i:
                 tmp_countours = np.vstack((tmp_countours, point))
-            
+
             contour_points.append(tmp_countours.tolist())
 
         else:

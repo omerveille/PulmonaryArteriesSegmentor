@@ -14,7 +14,7 @@ class Graph_branches():
         self.contours_points = []        # list of shape (n,m,l,3) with n = number of branches, m = number of points in the current center line and l = number of points in the current contour
         self.centers_line_markups = []   # list of murkups for centers line
         self.contour_points_markups = [] # list of markups for contour points
-        
+
         self.tree_widget = tree_widget
         self._currentTreeItem = None
         self.tree_widget.connect("itemClicked(QTreeWidgetItem *, int)", self.onItemClicked)
@@ -39,7 +39,7 @@ class Graph_branches():
 
         self.centers_line_markups.append(new_center_line)
         self.contour_points_markups.append(new_contour_points)
-    
+
 
     def createNewBranch(self, edge, centers_line, contour_points, parent_node=None):
         self.edges.append(edge)
@@ -55,7 +55,7 @@ class Graph_branches():
         centers_line = self.centers_lines[idx_cb]
         contour_points = self.contours_points[idx_cb]
 
-        # Modify old branch which became a parent   
+        # Modify old branch which became a parent
         self.centers_lines[idx_cb] = centers_line[:min(idx_cyl+1, len(centers_line)-1)]
         self.contours_points[idx_cb] = contour_points[:min(idx_cyl+1, len(centers_line)-1)]
         slicer.util.updateMarkupsControlPointsFromArray(self.centers_line_markups[idx_cb], self.centers_lines[idx_cb])
@@ -70,7 +70,7 @@ class Graph_branches():
         self.createNewBranch((len(self.nodes)-1, old_end), centers_line[idx_cyl:], contour_points[min(idx_cyl+1, len(centers_line)-1):], parent_node)
 
         return centers_line[idx_cyl:min(idx_cyl+1, len(centers_line)-1)]
-    
+
 
     def createNetworkX(self):
         # Create graph Network X with node = bifurcation and edges = branches
@@ -147,7 +147,7 @@ class Graph_branches():
             self.nodes.pop(self.edges[branch_id][1])
         self.edges.pop(branch_id)
 
-        self.tree_widget.removeNode(nodeId)                 
-        
+        self.tree_widget.removeNode(nodeId)
+
         if self._currentTreeItem == treeItem:
             self._currentTreeItem = None
