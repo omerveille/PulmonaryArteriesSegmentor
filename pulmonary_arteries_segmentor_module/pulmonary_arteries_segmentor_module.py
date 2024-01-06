@@ -1,11 +1,9 @@
-import json
 import os
 from typing import Annotated, Optional
 
 import numpy as np
 import vtk
 
-import qt
 import slicer
 from slicer.ScriptedLoadableModule import (ScriptedLoadableModuleWidget, ScriptedLoadableModuleLogic,
                                            ScriptedLoadableModule, ScriptedLoadableModuleTest)
@@ -14,9 +12,9 @@ from slicer.parameterNodeWrapper import (
     parameterNodeWrapper,
     WithinRange,
 )
-from slicer.parameterNodeWrapper import *
+from slicer.parameterNodeWrapper.validators import Choice
 
-from slicer import (vtkMRMLScalarVolumeNode, vtkMRMLMarkupsCurveNode, vtkMRMLMarkupsFiducialNode, qMRMLSubjectHierarchyTreeView)
+from slicer import (vtkMRMLScalarVolumeNode, vtkMRMLMarkupsFiducialNode)
 import tempfile
 
 import networkx as nx
@@ -158,6 +156,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         self._parameterNode = None
         self._parameterNodeGuiTag = None
         self.graph_branches = None
+        self.segmentationNode = None
 
     def setup(self) -> None:
         """
@@ -194,6 +193,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
 
         # Buttons
         self.ui.applyButton.connect('clicked(bool)', self.onApplyButton)
+        self.ui.segmentButton.connect('clicked(bool)', self.onStartSegmentationButton)
         self.ui.applyButtonNewBranch.connect('clicked(bool)', self.onApplyButtonNewBranch)
 
         # Make sure parameter node is initialized (needed for module reload)
@@ -273,7 +273,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         return [self._parameterNode.inputVolume, self._parameterNode.startingPoint,
                 self._parameterNode.directionPoint, self._parameterNode.percentInlierPoints,
                 self._parameterNode.percentThreshold, self._parameterNode.startingRadius]
-    
+
     def _getParametersSegmentation(self) -> list:
         return [self._parameterNode.valueInflation, self._parameterNode.valueCurvature,
                 self._parameterNode.valueAttractionGradient, self._parameterNode.valueIterations,
@@ -305,7 +305,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
             # Compute output
             self.graph_branches = Graph_branches(self.branch_tree)
             self.graph_branches = self.logic.processBranch(self._getParametersBegin(), self.graph_branches, False)
-    
+
     def onApplyButtonNewBranch(self) -> None:
         """
         Run processing when user clicks "Apply" button.
@@ -314,6 +314,18 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
             # Compute output
             self.graph_branches = self.logic.processBranch(self._getParametersBegin(), self.graph_branches, True)
 
+    def onStartSegmentationButton(self) -> None:
+        print(f"onStartSegmentationButton | segmentationNode exists {self.segmentationNode is not None} | volume active {self._parameterNode.inputVolume is not None}")
+        if self.segmentationNode is None:
+            self.segmentationNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLSegmentationNode")
+            self.segmentationNode.SetName("Lung Segmentation")
+            self.segmentationNode.CreateDefaultDisplayNodes()
+            self.lungsSegment = self.segmentationNode.GetSegmentation().AddEmptySegment("Lungs", "Lungs", [128./255., 174./255, 128./255.])
+            self.arteriesSegment = self.segmentationNode.GetSegmentation().AddEmptySegment("Arteries", "Arteries", [216./255., 101./255, 79./255.])
+            self.otherSegment = self.segmentationNode.GetSegmentation().AddEmptySegment("Other", "Other", [230./255., 220./255, 70./255.])
+
+        if self._parameterNode.inputVolume:
+            self.segmentationNode.SetReferenceImageGeometryParameterFromVolumeNode(self._parameterNode.inputVolume)
 
 #
 # pulmonary_arteries_segmentor_moduleLogic
@@ -339,7 +351,6 @@ class pulmonary_arteries_segmentor_moduleLogic(ScriptedLoadableModuleLogic):
         return pulmonary_arteries_segmentor_moduleParameterNode(super().getParameterNode())
 
     def processBranch(self, params: list, graph_branches: Graph_branches, isNewBranch: bool) -> None:
-        # [self._parameterNode.inputVolume, self._parameterNode.startingPoint, self._parameterNode.directionPoint, self._parameterNode.percentInlierPoints, self._parameterNode.percentThreshold, self._parameterNode.startingRadius]
         """
         def run_ransac(input_volume_path, input_centers_curve_path, output_centers_curve_path, input_contour_point_path,
          output_contour_point_path, starting_point, direction_point, starting_radius, pct_inlier_points, threshold):
@@ -353,7 +364,7 @@ class pulmonary_arteries_segmentor_moduleLogic(ScriptedLoadableModuleLogic):
 
             direction_point = np.array([0, 0, 0])
             params[2].GetNthControlPointPosition(0, direction_point)
-            
+
             graph_branches = run_ransac(input_volume_path, starting_point, direction_point, params[5],
                                                    params[3], params[4], graph_branches, isNewBranch)
 
