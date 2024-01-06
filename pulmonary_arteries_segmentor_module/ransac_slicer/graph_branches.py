@@ -1,4 +1,6 @@
 import networkx as nx
+from networkx.readwrite import json_graph
+import json
 import numpy as np
 import slicer
 import qt
@@ -77,9 +79,20 @@ class Graph_branches():
         for i, n in enumerate(self.nodes):
             branch_graph.add_node(i, pos=n)
         for i, e in enumerate(self.edges):
-            branch_graph.add_edge(e[0], e[1], name=self.names[i], centers_line=self.centers_lines[i], contour_points=self.contours_points[i])
+            branch_graph.add_edge(e[0], e[1], name=self.names[i], centers_line=self.centers_lines[i].tolist(), contour_points=self.contours_points[i])
 
-        # TODO save graph to file python
+        # save to json
+        data = json_graph.node_link_data(branch_graph)
+        print(type(data))
+        print(data)
+        json2 = json.dumps(data)
+        with open("tree2.json", "w") as outfile:
+            json.dump(json2, outfile)
+        
+        # save with pickle
+        nx.write_gpickle(branch_graph, "tree.gpickle")
+
+
         return branch_graph
     
     
