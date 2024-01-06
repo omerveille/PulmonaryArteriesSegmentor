@@ -725,11 +725,11 @@ def track_branch(vol, cyl, cfg, centers_line, branch):
         if i.shape[0] > 0 and not c.is_redundant(branch):
             branch.append(c)
 
-            centers_line = np.vstack((centers_line, c.center.tolist()))
+            centers_line = np.vstack((centers_line, c.center))
 
             tmp_countours = np.empty((0,3))
             for point in i:
-                tmp_countours = np.vstack((tmp_countours, point.tolist()))
+                tmp_countours = np.vstack((tmp_countours, point))
             
             contour_points.append(tmp_countours.tolist())
 

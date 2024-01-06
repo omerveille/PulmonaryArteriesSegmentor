@@ -196,6 +196,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         self.ui.createRoot.connect('clicked(bool)', self.createRoot)
         self.ui.createNewBranch.connect('clicked(bool)', self.createNewBranch)
         self.ui.clearTree.connect('clicked(bool)', self.graph_branches.clearAll)
+        self.ui.clearTree.connect('clicked(bool)', self._checkCanApply)
         self.ui.saveTree.connect('clicked(bool)', self.graph_branches.saveNetworkX)
 
         # Make sure parameter node is initialized (needed for module reload)
