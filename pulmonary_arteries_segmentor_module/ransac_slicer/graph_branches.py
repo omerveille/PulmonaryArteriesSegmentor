@@ -6,10 +6,10 @@ import numpy as np
 import slicer
 import qt
 from .cylinder import cylinder
-from .branch_tree import Branch_tree, Tree_column_role, Icons
+from .branch_tree import BranchTree, TreeColumnRole, Icons
 
-class Graph_branches():
-    def __init__(self, tree_widget: Branch_tree) -> None:
+class GraphBranches():
+    def __init__(self, tree_widget: BranchTree) -> None:
         self.branch_list = []            # list of shape (n,m) with n = number of branches and m = number of cylinder in the current branch
         self.nodes = []                  # list of nodes which are the birfucation + root + leafs
         self.edges = []                  # list of tuple for edges between nodes
@@ -20,14 +20,14 @@ class Graph_branches():
         self.contour_points_markups = [] # list of markups for contour points
 
         self.tree_widget = tree_widget
-        self._currentTreeItem = None
-        self.tree_widget.connect("itemClicked(QTreeWidgetItem *, int)", self.onItemClicked)
-        self.tree_widget.itemRenamed.connect(self.onItemRenamed)
-        self.tree_widget.itemDeleted.connect(self.onDeleteItem)
-        self.tree_widget.keyPressed.connect(self.onKeyPressed)
+        self.current_tree_item = None
+        self.tree_widget.connect("itemClicked(QTreeWidgetItem *, int)", self.on_item_clicked)
+        self.tree_widget.itemRenamed.connect(self.on_item_renamed)
+        self.tree_widget.itemDeleted.connect(self.on_delete_item)
+        self.tree_widget.keyPressed.connect(self.on_key_pressed)
 
 
-    def createNewMarkups(self, name, centers_line, contour_points):
+    def create_new_markups(self, name, centers_line, contour_points):
         new_center_line = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsCurveNode")
         slicer.util.updateMarkupsControlPointsFromArray(new_center_line, centers_line)
         # new_center_line.GetDisplayNode().SetTextScale(0)
@@ -43,7 +43,7 @@ class Graph_branches():
         self.contour_points_markups.append(new_contour_points)
 
 
-    def createNewBranch(self, edge, centers_line, contour_points, parent_node=None):
+    def create_new_branch(self, edge, centers_line, contour_points, parent_node=None):
         new_branch_list = []
         for cp in centers_line:
             new_branch_list.append(cylinder(center=np.array(cp)))
@@ -54,11 +54,11 @@ class Graph_branches():
         self.names.append(new_name)
         self.centers_lines.append(centers_line)
         self.contours_points.append(contour_points)
-        self.createNewMarkups(new_name, centers_line, contour_points)
+        self.create_new_markups(new_name, centers_line, contour_points)
         self.tree_widget.insertAfterNode(nodeId=new_name, parentNodeId=parent_node)
 
 
-    def updateGraph(self, idx_cb, idx_cyl, parent_node):
+    def update_graph(self, idx_cb, idx_cyl, parent_node):
         centers_line = self.centers_lines[idx_cb]
         contour_points = self.contours_points[idx_cb]
         branch_list = self.branch_list[idx_cb]
@@ -76,12 +76,12 @@ class Graph_branches():
         self.edges[idx_cb] = (self.edges[idx_cb][0], len(self.nodes)-1)
 
         # Create new branch from the old one but as a child
-        self.createNewBranch((len(self.nodes)-1, old_end), centers_line[idx_cyl:], contour_points[min(idx_cyl+1, len(centers_line)-1):], parent_node)
+        self.create_new_branch((len(self.nodes)-1, old_end), centers_line[idx_cyl:], contour_points[min(idx_cyl+1, len(centers_line)-1):], parent_node)
 
         return centers_line[idx_cyl:min(idx_cyl+1, len(centers_line)-1)]
 
 
-    def saveNetworkX(self):
+    def save_networkX(self):
         # Create graph Network X with node = bifurcation and edges = branches
         branch_graph = nx.DiGraph()
 
@@ -117,7 +117,7 @@ class Graph_branches():
         return branch_graph
 
 
-    def clearAll(self):
+    def clear_all(self):
         self.branch_list = []
         self.nodes = []
         self.edges = []
@@ -133,45 +133,45 @@ class Graph_branches():
         self.tree_widget.clear()
 
 
-    def onStopInteraction(self):
+    def on_stop_interaction(self):
         self.tree_widget.editing_node = False
-        if self._currentTreeItem is not None:
-            self._currentTreeItem.updateText()
+        if self.current_tree_item is not None:
+            self.current_tree_item.updateText()
 
-    def onItemClicked(self, treeItem, column):
+    def on_item_clicked(self, treeItem, column):
         """
     On item clicked, start placing item if necessary.
     Delete item if delete column was selected
     """
-        self._currentTreeItem = treeItem
-        nodeId = treeItem.nodeId
-        branch_id = self.names.index(nodeId)
-        if column == Tree_column_role.VISIBILITY_CENTER:
+        self.current_tree_item = treeItem
+        node_id = treeItem.nodeId
+        branch_id = self.names.index(node_id)
+        if column == TreeColumnRole.VISIBILITY_CENTER:
             is_visible = self.centers_line_markups[branch_id].GetDisplayNode().GetVisibility()
             self.centers_line_markups[branch_id].GetDisplayNode().SetVisibility(not is_visible)
-            self.tree_widget._branchDict[nodeId].setIcon(Tree_column_role.VISIBILITY_CENTER, Icons.visibleOff if is_visible else Icons.visibleOn)
-        if column == Tree_column_role.VISIBILITY_CONTOUR:
+            self.tree_widget._branchDict[node_id].setIcon(TreeColumnRole.VISIBILITY_CENTER, Icons.visibleOff if is_visible else Icons.visibleOn)
+        if column == TreeColumnRole.VISIBILITY_CONTOUR:
             is_visible = self.contour_points_markups[branch_id].GetDisplayNode().GetVisibility()
             self.contour_points_markups[branch_id].GetDisplayNode().SetVisibility(not is_visible)
-            self.tree_widget._branchDict[nodeId].setIcon(Tree_column_role.VISIBILITY_CONTOUR, Icons.visibleOff if is_visible else Icons.visibleOn)
-        if column == Tree_column_role.DELETE:
-            self.onDeleteItem(treeItem)
+            self.tree_widget._branchDict[node_id].setIcon(TreeColumnRole.VISIBILITY_CONTOUR, Icons.visibleOff if is_visible else Icons.visibleOn)
+        if column == TreeColumnRole.DELETE:
+            self.on_delete_item(treeItem)
 
-    def onItemRenamed(self, previous, new):
+    def on_item_renamed(self, previous, new):
         branch_id = self.names.index(previous)
         self.names[branch_id] = new
         self.centers_line_markups[branch_id].SetName(new+"_centers")
         self.contour_points_markups[branch_id].SetName(new+"_contours")
 
-    def onKeyPressed(self, treeItem, key):
+    def on_key_pressed(self, treeItem, key):
         """
     On delete key pressed, delete the current item if any selected
     """
         if key == qt.Qt.Key_Delete:
-            self.onDeleteItem(treeItem)
+            self.on_delete_item(treeItem)
 
 
-    def deleteNode(self, index):
+    def delete_node(self, index):
         self.nodes.pop(index)
         for i in range(len(self.edges)):
             n1, n2 = self.edges[i]
@@ -181,15 +181,15 @@ class Graph_branches():
                 n2 -= 1
             self.edges[i] = n1, n2
 
-    def onDeleteItem(self, treeItem):
+    def on_delete_item(self, treeItem):
         """
     Remove the item from the tree and hide the associated markup
     """
-        self.onStopInteraction()
-        nodeId = treeItem.nodeId
-        if self.tree_widget.isRoot(nodeId):
+        self.on_stop_interaction()
+        node_id = treeItem.nodeId
+        if self.tree_widget.isRoot(node_id):
             return
-        branch_id = self.names.index(nodeId)
+        branch_id = self.names.index(node_id)
         self.names.pop(branch_id)
         self.branch_list.pop(branch_id)
         self.centers_lines.pop(branch_id)
@@ -197,11 +197,11 @@ class Graph_branches():
         slicer.mrmlScene.RemoveNode(self.centers_line_markups.pop(branch_id))
         slicer.mrmlScene.RemoveNode(self.contour_points_markups.pop(branch_id))
 
-        if self.tree_widget.isLeaf(nodeId):
-            self.deleteNode(self.edges[branch_id][1])
+        if self.tree_widget.isLeaf(node_id):
+            self.delete_node(self.edges[branch_id][1])
         self.edges.pop(branch_id)
 
-        self.tree_widget.removeNode(nodeId)
+        self.tree_widget.removeNode(node_id)
 
-        if self._currentTreeItem == treeItem:
-            self._currentTreeItem = None
+        if self.current_tree_item == treeItem:
+            self.current_tree_item = None

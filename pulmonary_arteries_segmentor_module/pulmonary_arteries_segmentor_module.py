@@ -29,8 +29,8 @@ except Exception as e:
     print(f"Exception occurred while reloading\n{e}")
 
 from ransac_slicer.ransac import run_ransac
-from ransac_slicer.graph_branches import Graph_branches
-from ransac_slicer.branch_tree import Branch_tree
+from ransac_slicer.graph_branches import GraphBranches
+from ransac_slicer.branch_tree import BranchTree
 
 #
 # pulmonary_arteries_segmentor_module
@@ -188,12 +188,12 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         # in batch mode, without a graphical user interface.
         self.logic = pulmonary_arteries_segmentor_moduleLogic()
 
-        self.branch_tree = Branch_tree()
+        self.branch_tree = BranchTree()
         begin_tab = self.ui.tabWidget.widget(0)
         begin_tab.layout().insertWidget(6, self.branch_tree)
         # self.branch_tree.addTopLevelItem(Branch_tree_item("test"))
 
-        self.graph_branches = Graph_branches(self.branch_tree)
+        self.graph_branches = GraphBranches(self.branch_tree)
         # Connections
 
         # These connections ensure that we update parameter node when scene is closed
@@ -203,9 +203,9 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         # Buttons
         self.ui.createRoot.connect('clicked(bool)', self.createRoot)
         self.ui.createNewBranch.connect('clicked(bool)', self.createNewBranch)
-        self.ui.clearTree.connect('clicked(bool)', self.graph_branches.clearAll)
+        self.ui.clearTree.connect('clicked(bool)', self.graph_branches.clear_all)
         self.ui.clearTree.connect('clicked(bool)', self._checkCanApply)
-        self.ui.saveTree.connect('clicked(bool)', self.graph_branches.saveNetworkX)
+        self.ui.saveTree.connect('clicked(bool)', self.graph_branches.save_networkX)
 
         # Make sure parameter node is initialized (needed for module reload)
         self.initializeParameterNode()
@@ -360,7 +360,7 @@ class pulmonary_arteries_segmentor_moduleLogic(ScriptedLoadableModuleLogic):
     def getParameterNode(self):
         return pulmonary_arteries_segmentor_moduleParameterNode(super().getParameterNode())
 
-    def processBranch(self, params: list, graph_branches: Graph_branches, isNewBranch: bool) -> None:
+    def processBranch(self, params: list, graph_branches: GraphBranches, isNewBranch: bool) -> None:
         # [self._parameterNode.inputVolume, self._parameterNode.startingPoint, self._parameterNode.directionPoint, self._parameterNode.percentInlierPoints, self._parameterNode.percentThreshold, self._parameterNode.startingRadius]
         """
         def run_ransac(input_volume_path, input_centers_curve_path, output_centers_curve_path, input_contour_point_path,

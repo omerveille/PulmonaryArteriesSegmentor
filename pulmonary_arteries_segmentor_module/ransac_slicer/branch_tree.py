@@ -1,23 +1,23 @@
 import qt
 
-from .RVXLiverSegmentationUtils import Signal, Icons
+from .segmentation_utils import Signal, Icons
 
-class Tree_column_role:
+class TreeColumnRole:
     NODE_ID = 0
     VISIBILITY_CENTER = 1
     VISIBILITY_CONTOUR = 2
     DELETE = 3
 
-class Branch_tree_item(qt.QTreeWidgetItem):
+class BranchTreeItem(qt.QTreeWidgetItem):
   """Helper class holding nodeId and nodeName in the VesselBranchTree
   """
 
   def __init__(self, nodeId):
     qt.QTreeWidgetItem.__init__(self)
     self.nodeId = nodeId
-    self.setIcon(Tree_column_role.VISIBILITY_CENTER, Icons.visibleOn)
-    self.setIcon(Tree_column_role.VISIBILITY_CONTOUR, Icons.visibleOff)
-    self.setIcon(Tree_column_role.DELETE, Icons.delete)
+    self.setIcon(TreeColumnRole.VISIBILITY_CENTER, Icons.visibleOn)
+    self.setIcon(TreeColumnRole.VISIBILITY_CONTOUR, Icons.visibleOff)
+    self.setIcon(TreeColumnRole.DELETE, Icons.delete)
     self.setFlags(self.flags() | qt.Qt.ItemIsEditable)
     self.updateText()
 
@@ -33,7 +33,7 @@ class Branch_tree_item(qt.QTreeWidgetItem):
   def updateText(self):
     self.setText(0, f"{self.nodeId}")
 
-class Branch_tree(qt.QTreeWidget):
+class BranchTree(qt.QTreeWidget):
   """Tree representation of vessel branch nodes.
 
   Class enables inserting new vessel node branches after or before existing nodes.
@@ -65,9 +65,9 @@ class Branch_tree(qt.QTreeWidget):
     self.header().setSectionResizeMode(1, qt.QHeaderView.ResizeToContents)
     self.header().setSectionResizeMode(2, qt.QHeaderView.ResizeToContents)
     self.header().setSectionResizeMode(3, qt.QHeaderView.ResizeToContents)
-    self.headerItem().setIcon(Tree_column_role.VISIBILITY_CENTER, Icons.toggleVisibility)
-    self.headerItem().setIcon(Tree_column_role.VISIBILITY_CONTOUR, Icons.toggleVisibility)
-    self.headerItem().setIcon(Tree_column_role.DELETE, Icons.delete)
+    self.headerItem().setIcon(TreeColumnRole.VISIBILITY_CENTER, Icons.toggleVisibility)
+    self.headerItem().setIcon(TreeColumnRole.VISIBILITY_CONTOUR, Icons.toggleVisibility)
+    self.headerItem().setIcon(TreeColumnRole.DELETE, Icons.delete)
 
     # Enable reordering by drag and drop
     self.setDragEnabled(False)
@@ -163,7 +163,7 @@ class Branch_tree(qt.QTreeWidget):
       self.itemRenamed.emit(previous, new)
 
   def renameItem(self):
-    item: Branch_tree_item = self.currentItem()
+    item: BranchTreeItem = self.currentItem()
     self.editing_node = True
     self.editItem(item, 0)
 
@@ -177,7 +177,7 @@ class Branch_tree(qt.QTreeWidget):
       self._removeFromParent(nodeItem)
       return nodeItem
     else:
-      return Branch_tree_item(nodeId)
+      return BranchTreeItem(nodeId)
 
   def _removeFromParent(self, nodeItem):
     """Remove input node item from its parent if it is attached to an item or from the TreeWidget if at the root

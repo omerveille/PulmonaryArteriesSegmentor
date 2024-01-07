@@ -3,11 +3,11 @@ from .cylinder_ransac import (track_branch, config)
 from .cylinder import cylinder, closest_branch
 from .volume import volume
 import numpy as np
-from ransac_slicer.graph_branches import Graph_branches
+from ransac_slicer.graph_branches import GraphBranches
 
 
 def run_ransac(input_volume_path, starting_point, direction_point, starting_radius, pct_inlier_points,
-               threshold, graph_branches: Graph_branches, isNewBranch):
+               threshold, graph_branches: GraphBranches, isNewBranch):
     # Input volume
     vol = volume.from_nrrd(input_volume_path)
 
@@ -18,7 +18,7 @@ def run_ransac(input_volume_path, starting_point, direction_point, starting_radi
 
         # Update Graph
         parent_node = graph_branches.names[idx_cb]
-        end_center_line = graph_branches.updateGraph(idx_cb, idx_cyl, parent_node)
+        end_center_line = graph_branches.update_graph(idx_cb, idx_cyl, parent_node)
     else:
         parent_node = None
         graph_branches.nodes.append(starting_point)
@@ -40,6 +40,6 @@ def run_ransac(input_volume_path, starting_point, direction_point, starting_radi
     centers_line, contour_points = track_branch(vol, cyl, cfg, end_center_line, [elt for branch in graph_branches.branch_list for elt in branch])
 
     graph_branches.nodes.append(centers_line[-1])
-    graph_branches.createNewBranch((len(graph_branches.nodes) - 2, len(graph_branches.nodes) - 1), centers_line, contour_points, parent_node)
+    graph_branches.create_new_branch((len(graph_branches.nodes) - 2, len(graph_branches.nodes) - 1), centers_line, contour_points, parent_node)
 
     return graph_branches
