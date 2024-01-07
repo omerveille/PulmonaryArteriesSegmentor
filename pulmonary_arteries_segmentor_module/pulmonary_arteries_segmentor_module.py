@@ -18,6 +18,8 @@ from slicer import (vtkMRMLScalarVolumeNode, vtkMRMLMarkupsFiducialNode)
 import tempfile
 
 import networkx as nx
+from vtkSlicerMarkupsModuleMRMLPython import vtkMRMLMarkupsNode
+
 from ransac_slicer.ransac import run_ransac
 from ransac_slicer.graph_branches import Graph_branches
 from ransac_slicer.branch_tree import Branch_tree
@@ -281,7 +283,18 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
                 self._parameterNode.segmentationMethod]
 
     def _checkCanApply(self, caller=None, event=None) -> None:
-        if self._parameterNode and all(self._getParametersBegin()):
+        starting_point = self._parameterNode.startingPoint
+        direction_point = self._parameterNode.directionPoint
+
+        if starting_point and not self.hasObserver(starting_point, vtkMRMLMarkupsNode.PointAddedEvent, self._checkCanApply):
+            self.addObserver(starting_point, vtkMRMLMarkupsNode.PointAddedEvent, self._checkCanApply)
+            self.addObserver(starting_point, vtkMRMLMarkupsNode.PointRemovedEvent, self._checkCanApply)
+
+        if direction_point and not self.hasObserver(direction_point, vtkMRMLMarkupsNode.PointAddedEvent, self._checkCanApply):
+            self.addObserver(direction_point, vtkMRMLMarkupsNode.PointAddedEvent, self._checkCanApply)
+            self.addObserver(direction_point, vtkMRMLMarkupsNode.PointRemovedEvent, self._checkCanApply)
+
+        if self._parameterNode and all(self._getParametersBegin()) and starting_point.GetNumberOfControlPoints() and direction_point.GetNumberOfControlPoints():
             self.ui.applyButton.toolTip = "Compute output volume"
             self.ui.applyButton.enabled = True
         else:
