@@ -314,6 +314,25 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
             # Compute output
             self.graph_branches = self.logic.processBranch(self._getParametersBegin(), self.graph_branches, True)
 
+    def paintUsingMarkups(self, markupsNode, radius, segmentId):
+        segment = self.segmentationNode.GetSegmentation().GetSegment(segmentId)
+        segmentColor = segment.GetColor()
+        segmentName = segment.GetName()
+
+        self.segmentationNode.GetSegmentation().RemoveSegment(segmentId)
+        append = vtk.vtkAppendPolyData()
+        for i in range(markupsNode.GetNumberOfControlPoints()):
+            ras = [0, 0, 0]
+            markupsNode.GetNthControlPointPosition(i,ras)
+            sphere = vtk.vtkSphereSource()
+            sphere.SetCenter(ras)
+            sphere.SetRadius(radius)
+            sphere.Update()
+            append.AddInputData(sphere.GetOutput())
+        append.Update()
+
+        self.segmentationNode.AddSegmentFromClosedSurfaceRepresentation(append.GetOutput(), segmentName, segmentColor)
+
     def onStartSegmentationButton(self) -> None:
         print(f"onStartSegmentationButton | segmentationNode exists {self.segmentationNode is not None} | volume active {self._parameterNode.inputVolume is not None}")
         if self.segmentationNode is None:
@@ -326,6 +345,11 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
 
         if self._parameterNode.inputVolume:
             self.segmentationNode.SetReferenceImageGeometryParameterFromVolumeNode(self._parameterNode.inputVolume)
+
+        if self._parameterNode.startingPoint:
+            print("Starting Point", self._parameterNode.startingPoint)
+            self.paintUsingMarkups(self._parameterNode.startingPoint, 10., self.lungsSegment)
+
 
 #
 # pulmonary_arteries_segmentor_moduleLogic
