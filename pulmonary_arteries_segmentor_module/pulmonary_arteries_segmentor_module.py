@@ -1,11 +1,9 @@
-import json
 import os
 from typing import Annotated, Optional
 
 import numpy as np
 import vtk
 
-import qt
 import slicer
 from slicer.ScriptedLoadableModule import (ScriptedLoadableModuleWidget, ScriptedLoadableModuleLogic,
                                            ScriptedLoadableModule, ScriptedLoadableModuleTest)
@@ -14,12 +12,22 @@ from slicer.parameterNodeWrapper import (
     parameterNodeWrapper,
     WithinRange,
 )
-from slicer.parameterNodeWrapper import *
+from slicer.parameterNodeWrapper.validators import Choice
 
-from slicer import (vtkMRMLScalarVolumeNode, vtkMRMLMarkupsCurveNode, vtkMRMLMarkupsFiducialNode, qMRMLSubjectHierarchyTreeView)
+from slicer import (vtkMRMLScalarVolumeNode, vtkMRMLMarkupsFiducialNode)
 import tempfile
 
-import networkx as nx
+
+import importlib
+import sys
+
+try:
+    to_reload = [key for key in sys.modules.keys() if "ransac_slicer." in key]
+    for file_to_reload in to_reload:
+        sys.modules[file_to_reload] = importlib.reload(sys.modules[file_to_reload])
+except Exception as e:
+    print(f"Exception occurred while reloading\n{e}")
+
 from ransac_slicer.ransac import run_ransac
 from ransac_slicer.graph_branches import Graph_branches
 from ransac_slicer.branch_tree import Branch_tree
@@ -276,7 +284,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         return [self._parameterNode.inputVolume, self._parameterNode.startingPoint,
                 self._parameterNode.directionPoint, self._parameterNode.percentInlierPoints,
                 self._parameterNode.percentThreshold, self._parameterNode.startingRadius]
-    
+
     def _getParametersSegmentation(self) -> list:
         return [self._parameterNode.valueInflation, self._parameterNode.valueCurvature,
                 self._parameterNode.valueAttractionGradient, self._parameterNode.valueIterations,
@@ -319,7 +327,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
             # Compute output
             self.graph_branches = self.logic.processBranch(self._getParametersBegin(), self.graph_branches, False)
             self._checkCanApply()
-    
+
     def createNewBranch(self) -> None:
         """
         Run processing when user clicks "Apply" button.
@@ -367,7 +375,7 @@ class pulmonary_arteries_segmentor_moduleLogic(ScriptedLoadableModuleLogic):
 
             direction_point = np.array([0, 0, 0])
             params[2].GetNthControlPointPosition(0, direction_point)
-            
+
             graph_branches = run_ransac(input_volume_path, starting_point, direction_point, params[5],
                                                    params[3], params[4], graph_branches, isNewBranch)
 

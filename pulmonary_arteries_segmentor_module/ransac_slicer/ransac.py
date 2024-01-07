@@ -1,10 +1,9 @@
 #!/usr/bin/env python-real
-from .io import (copy_curve)
 from .cylinder_ransac import (track_branch, config)
 from .cylinder import cylinder, closest_branch
 from .volume import volume
 import numpy as np
-from ransac_slicer.graph_branches import *
+from ransac_slicer.graph_branches import Graph_branches
 
 
 def run_ransac(input_volume_path, starting_point, direction_point, starting_radius, pct_inlier_points,
@@ -24,7 +23,7 @@ def run_ransac(input_volume_path, starting_point, direction_point, starting_radi
         parent_node = None
         graph_branches.nodes.append(starting_point)
         end_center_line = np.empty((0,3))
-        
+
     direction_point = direction_point - starting_point
 
     init_radius = starting_radius
@@ -40,11 +39,7 @@ def run_ransac(input_volume_path, starting_point, direction_point, starting_radi
     # Perform tracking
     centers_line, contour_points = track_branch(vol, cyl, cfg, end_center_line, [elt for branch in graph_branches.branch_list for elt in branch])
 
-    new_branch_list = []
-    for cp in centers_line:
-        new_branch_list.append(cylinder(center=np.array(cp)))
-    graph_branches.branch_list.append(new_branch_list)
     graph_branches.nodes.append(centers_line[-1])
     graph_branches.createNewBranch((len(graph_branches.nodes) - 2, len(graph_branches.nodes) - 1), centers_line, contour_points, parent_node)
-    
+
     return graph_branches

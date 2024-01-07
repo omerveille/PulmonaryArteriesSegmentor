@@ -5,6 +5,7 @@ import json
 import numpy as np
 import slicer
 import qt
+from .cylinder import cylinder
 from .branch_tree import Branch_tree, Tree_column_role, Icons
 
 class Graph_branches():
@@ -15,14 +16,14 @@ class Graph_branches():
         self.names = []                  # list of names in each edges
         self.centers_lines = []          # list of shape (n,m,3) with n = number of branches and m = number of points in the current center line
         self.contours_points = []        # list of shape (n,m,l,3) with n = number of branches, m = number of points in the current center line and l = number of points in the current contour
-        self.centers_line_markups = []   # list of murkups for centers line
+        self.centers_line_markups = []   # list of markups for centers line
         self.contour_points_markups = [] # list of markups for contour points
-        
+
         self.tree_widget = tree_widget
         self._currentTreeItem = None
         self.tree_widget.connect("itemClicked(QTreeWidgetItem *, int)", self.onItemClicked)
         self.tree_widget.itemRenamed.connect(self.onItemRenamed)
-        self.tree_widget.itemDeleted.connect(self._onDeleteItem)
+        self.tree_widget.itemDeleted.connect(self.onDeleteItem)
         self.tree_widget.keyPressed.connect(self.onKeyPressed)
 
 
@@ -40,9 +41,14 @@ class Graph_branches():
 
         self.centers_line_markups.append(new_center_line)
         self.contour_points_markups.append(new_contour_points)
-    
+
 
     def createNewBranch(self, edge, centers_line, contour_points, parent_node=None):
+        new_branch_list = []
+        for cp in centers_line:
+            new_branch_list.append(cylinder(center=np.array(cp)))
+        self.branch_list.append(new_branch_list)
+
         self.edges.append(edge)
         new_name = "b"+str(len(self.edges))
         self.names.append(new_name)
@@ -55,12 +61,14 @@ class Graph_branches():
     def updateGraph(self, idx_cb, idx_cyl, parent_node):
         centers_line = self.centers_lines[idx_cb]
         contour_points = self.contours_points[idx_cb]
+        branch_list = self.branch_list[idx_cb]
 
-        # Modify old branch which became a parent   
+        # Modify old branch which became a parent
         self.centers_lines[idx_cb] = centers_line[:min(idx_cyl+1, len(centers_line)-1)]
         self.contours_points[idx_cb] = contour_points[:min(idx_cyl+1, len(centers_line)-1)]
         slicer.util.updateMarkupsControlPointsFromArray(self.centers_line_markups[idx_cb], self.centers_lines[idx_cb])
         slicer.util.updateMarkupsControlPointsFromArray(self.contour_points_markups[idx_cb], np.array([elt for pts in self.contours_points[idx_cb] for elt in pts]))
+        self.branch_list[idx_cb] = branch_list[:min(idx_cyl+1, len(centers_line)-1)]
 
         # Update edges
         self.nodes.append(centers_line[idx_cyl])
@@ -71,7 +79,7 @@ class Graph_branches():
         self.createNewBranch((len(self.nodes)-1, old_end), centers_line[idx_cyl:], contour_points[min(idx_cyl+1, len(centers_line)-1):], parent_node)
 
         return centers_line[idx_cyl:min(idx_cyl+1, len(centers_line)-1)]
-    
+
 
     def saveNetworkX(self):
         # Create graph Network X with node = bifurcation and edges = branches
@@ -107,8 +115,8 @@ class Graph_branches():
 
 
         return branch_graph
-    
-    
+
+
     def clearAll(self):
         self.branch_list = []
         self.nodes = []
@@ -121,7 +129,7 @@ class Graph_branches():
         for _ in range(size):
             slicer.mrmlScene.RemoveNode(self.centers_line_markups.pop())
             slicer.mrmlScene.RemoveNode(self.contour_points_markups.pop())
-        
+
         self.tree_widget.clear()
 
 
@@ -147,7 +155,7 @@ class Graph_branches():
             self.contour_points_markups[branch_id].GetDisplayNode().SetVisibility(not is_visible)
             self.tree_widget._branchDict[nodeId].setIcon(Tree_column_role.VISIBILITY_CONTOUR, Icons.visibleOff if is_visible else Icons.visibleOn)
         if column == Tree_column_role.DELETE:
-            self._onDeleteItem(treeItem)
+            self.onDeleteItem(treeItem)
 
     def onItemRenamed(self, previous, new):
         branch_id = self.names.index(previous)
@@ -160,14 +168,27 @@ class Graph_branches():
     On delete key pressed, delete the current item if any selected
     """
         if key == qt.Qt.Key_Delete:
-            self._onDeleteItem(treeItem)
+            self.onDeleteItem(treeItem)
 
-    def _onDeleteItem(self, treeItem):
+
+    def deleteNode(self, index):
+        self.nodes.pop(index)
+        for i in range(len(self.edges)):
+            n1, n2 = self.edges[i]
+            if n1 > index:
+                n1 -= 1
+            if n2 > index:
+                n2 -= 1
+            self.edges[i] = n1, n2
+
+    def onDeleteItem(self, treeItem):
         """
     Remove the item from the tree and hide the associated markup
     """
         self.onStopInteraction()
         nodeId = treeItem.nodeId
+        if self.tree_widget.isRoot(nodeId):
+            return
         branch_id = self.names.index(nodeId)
         self.names.pop(branch_id)
         self.branch_list.pop(branch_id)
@@ -176,13 +197,11 @@ class Graph_branches():
         slicer.mrmlScene.RemoveNode(self.centers_line_markups.pop(branch_id))
         slicer.mrmlScene.RemoveNode(self.contour_points_markups.pop(branch_id))
 
-        if self.tree_widget.isRoot(nodeId):
-            self.nodes.pop(self.edges[branch_id][0])
         if self.tree_widget.isLeaf(nodeId):
-            self.nodes.pop(self.edges[branch_id][1])
+            self.deleteNode(self.edges[branch_id][1])
         self.edges.pop(branch_id)
 
-        self.tree_widget.removeNode(nodeId)                 
-        
+        self.tree_widget.removeNode(nodeId)
+
         if self._currentTreeItem == treeItem:
             self._currentTreeItem = None
