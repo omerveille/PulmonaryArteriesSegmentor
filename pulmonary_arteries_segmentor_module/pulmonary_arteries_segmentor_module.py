@@ -15,7 +15,6 @@ from slicer.parameterNodeWrapper import (
 from slicer.parameterNodeWrapper.validators import Choice
 
 from slicer import (vtkMRMLScalarVolumeNode, vtkMRMLMarkupsFiducialNode)
-import tempfile
 
 import networkx as nx
 from vtkSlicerMarkupsModuleMRMLPython import vtkMRMLMarkupsNode
@@ -23,6 +22,7 @@ from vtkSlicerMarkupsModuleMRMLPython import vtkMRMLMarkupsNode
 from ransac_slicer.ransac import run_ransac
 from ransac_slicer.graph_branches import Graph_branches
 from ransac_slicer.branch_tree import Branch_tree
+from ransac_slicer.volume import volume
 
 #
 # pulmonary_arteries_segmentor_module
@@ -389,27 +389,34 @@ class pulmonary_arteries_segmentor_moduleLogic(ScriptedLoadableModuleLogic):
 
     def processBranch(self, params: list, graph_branches: Graph_branches, isNewBranch: bool) -> None:
         """
-        def run_ransac(input_volume_path, input_centers_curve_path, output_centers_curve_path, input_contour_point_path,
+        def run_ransac(vol, input_centers_curve_path, output_centers_curve_path, input_contour_point_path,
          output_contour_point_path, starting_point, direction_point, starting_radius, pct_inlier_points, threshold):
         """
-        with tempfile.TemporaryDirectory() as tmpdirname:
-            _, input_volume_path = tempfile.mkstemp(prefix="input_volume_", suffix=".nrrd", dir=tmpdirname)
-            slicer.util.exportNode(params[0], input_volume_path)
 
-            starting_point = np.array([0, 0, 0])
-            params[1].GetNthControlPointPosition(0, starting_point)
+        vol = slicer.util.array(params[0].GetID())
+        vol = vol.swapaxes(0,2)
 
-            direction_point = np.array([0, 0, 0])
-            params[2].GetNthControlPointPosition(0, direction_point)
+        ijk_to_ras = vtk.vtkMatrix4x4()
+        params[0].GetIJKToRASMatrix(ijk_to_ras)
+        np_ijk_to_ras = np.zeros(shape=(4,4))
+        ijk_to_ras.DeepCopy(np_ijk_to_ras.ravel(), ijk_to_ras)
 
-            graph_branches = run_ransac(input_volume_path, starting_point, direction_point, params[5],
-                                                   params[3], params[4], graph_branches, isNewBranch)
+        vol = volume(vol, np_ijk_to_ras)
 
-            branch_graph = graph_branches.createNetworkX()
-            print(f"number of nodes: {branch_graph.number_of_nodes()} and number of edges: {branch_graph.number_of_edges()}")
-            print(branch_graph.nodes, branch_graph.edges)
-            print(nx.get_edge_attributes(branch_graph, "centers_line"))
-            return graph_branches
+        starting_point = np.array([0, 0, 0])
+        params[1].GetNthControlPointPosition(0, starting_point)
+
+        direction_point = np.array([0, 0, 0])
+        params[2].GetNthControlPointPosition(0, direction_point)
+
+        graph_branches = run_ransac(vol, starting_point, direction_point, params[5],
+                                               params[3], params[4], graph_branches, isNewBranch)
+
+        branch_graph = graph_branches.createNetworkX()
+        print(f"number of nodes: {branch_graph.number_of_nodes()} and number of edges: {branch_graph.number_of_edges()}")
+        print(branch_graph.nodes, branch_graph.edges)
+        print(nx.get_edge_attributes(branch_graph, "centers_line"))
+        return graph_branches
 #
 # pulmonary_arteries_segmentor_moduleTest
 #

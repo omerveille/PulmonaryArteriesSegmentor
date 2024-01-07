@@ -1,15 +1,12 @@
 #!/usr/bin/env python-real
 from .cylinder_ransac import (track_branch, config)
 from .cylinder import cylinder, closest_branch
-from .volume import volume
 import numpy as np
 from .graph_branches import Graph_branches
 
 
-def run_ransac(input_volume_path, starting_point, direction_point, starting_radius, pct_inlier_points,
+def run_ransac(vol, starting_point, direction_point, starting_radius, pct_inlier_points,
                threshold, graph_branches: Graph_branches, isNewBranch):
-    # Input volume
-    vol = volume.from_nrrd(input_volume_path)
 
     # Input info for branch tracking (in RAS coordinates)
     if isNewBranch:
