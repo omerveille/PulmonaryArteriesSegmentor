@@ -24,6 +24,7 @@ class GraphBranches():
         self.tree_widget.connect("itemClicked(QTreeWidgetItem *, int)", self.on_item_clicked)
         self.tree_widget.itemRenamed.connect(self.on_item_renamed)
         self.tree_widget.itemDeleted.connect(self.on_delete_item)
+        self.tree_widget.itemMergeOnlyChild.connect(self.on_merge_only_child)
         self.tree_widget.keyPressed.connect(self.on_key_pressed)
 
 
@@ -213,3 +214,33 @@ class GraphBranches():
 
         if self.current_tree_item == treeItem:
             self.current_tree_item = None
+
+    def on_merge_only_child(self, treeItem):
+        self.on_stop_interaction()
+        node_id = treeItem.nodeId
+        child_list = self.tree_widget.getChildrenNodeId(node_id)
+        if len(child_list) > 1:
+            return
+
+        parent_idx = self.names.index(node_id)
+        child_idx = self.names.index(child_list[0])
+
+        # Modify parent branch to add child branch
+        self.centers_lines[parent_idx] = np.vstack((self.centers_lines[parent_idx], self.centers_lines[child_idx][1:]))
+        self.centers_lines.pop(child_idx)
+        self.contours_points[parent_idx] += self.contours_points[child_idx]
+        self.contours_points.pop(child_idx)
+        slicer.util.updateMarkupsControlPointsFromArray(self.centers_line_markups[parent_idx], self.centers_lines[parent_idx])
+        slicer.util.updateMarkupsControlPointsFromArray(self.contour_points_markups[parent_idx], np.array([elt for pts in self.contours_points[parent_idx] for elt in pts]))
+        slicer.mrmlScene.RemoveNode(self.centers_line_markups.pop(child_idx))
+        slicer.mrmlScene.RemoveNode(self.contour_points_markups.pop(child_idx))
+        self.branch_list[parent_idx] += self.branch_list[child_idx]
+        self.branch_list.pop(child_idx)
+
+        # Delete old child
+        self.delete_node(self.edges[child_idx][0])
+        self.edges[parent_idx] = self.edges[parent_idx][0], self.edges[child_idx][1]
+        self.edges.pop(child_idx)
+        self.names.pop(child_idx)
+
+        self.tree_widget.removeNode(child_list[0])
