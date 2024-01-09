@@ -190,7 +190,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
 
         self.branch_tree = BranchTree()
         begin_tab = self.ui.tabWidget.widget(0)
-        begin_tab.layout().insertWidget(6, self.branch_tree)
+        begin_tab.layout().insertWidget(5, self.branch_tree)
         # self.branch_tree.addTopLevelItem(Branch_tree_item("test"))
 
         self.graph_branches = GraphBranches(self.branch_tree)
@@ -201,8 +201,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         self.addObserver(slicer.mrmlScene, slicer.mrmlScene.EndCloseEvent, self.onSceneEndClose)
 
         # Buttons
-        self.ui.createRoot.connect('clicked(bool)', self.createRoot)
-        self.ui.createNewBranch.connect('clicked(bool)', self.createNewBranch)
+        self.ui.createBranch.connect('clicked(bool)', self.create_branch)
         self.ui.clearTree.connect('clicked(bool)', self.graph_branches.clear_all)
         self.ui.clearTree.connect('clicked(bool)', self._checkCanApply)
         self.ui.saveTree.connect('clicked(bool)', self.graph_branches.save_networkX)
@@ -292,24 +291,22 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
                 self._parameterNode.segmentationMethod]
 
     def _checkCanApply(self, caller=None, event=None) -> None:
-        if self._parameterNode and all(self._getParametersBegin()) and len(self.graph_branches.names) == 0:
-            self.ui.createRoot.toolTip = "Create root"
-            self.ui.createRoot.enabled = True
+        if self._parameterNode and all(self._getParametersBegin()):
+            self.ui.createBranch.enabled = True
+            if len(self.graph_branches.names) == 0:
+                self.ui.createBranch.text = "Create root"
+                self.ui.createBranch.toolTip = "Create root"
+            else:
+                self.ui.createBranch.text = "Create new branch"
+                self.ui.createBranch.toolTip = "Create new branch"
         else:
-            self.ui.createRoot.toolTip = "Select all input before creating root"
-            self.ui.createRoot.enabled = False
-
-        if self._parameterNode and all(self._getParametersBegin()) and len(self.graph_branches.names) != 0:
-            self.ui.createNewBranch.toolTip = "Create new branch"
-            self.ui.createNewBranch.enabled = True
-        else:
-            self.ui.createNewBranch.toolTip = "Create root before creating other branches"
-            self.ui.createNewBranch.enabled = False
+            self.ui.createBranch.toolTip = "Select all input before creating branch"
+            self.ui.createBranch.enabled = False
 
         if len(self.graph_branches.names) != 0:
-            self.ui.clearTree.toolTip = "Compute new branch"
+            self.ui.clearTree.toolTip = "Clear all tree"
             self.ui.clearTree.enabled = True
-            self.ui.saveTree.toolTip = "Compute new branch"
+            self.ui.saveTree.toolTip = "Save graph tree"
             self.ui.saveTree.enabled = True
         else:
             self.ui.clearTree.toolTip = "Tree is already empty"
@@ -319,23 +316,12 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
 
         # TODO FOR tab branches
 
-    def createRoot(self) -> None:
-        """
-        Run processing when user clicks "Apply" button.
-        """
+    def create_branch(self) -> None:
         with slicer.util.tryWithErrorDisplay("Failed to compute results.", waitCursor=True):
             # Compute output
-            self.graph_branches = self.logic.processBranch(self._getParametersBegin(), self.graph_branches, False)
+            self.old_graph_branches = self.graph_branches
+            self.graph_branches = self.logic.processBranch(self._getParametersBegin(), self.graph_branches, self.ui.createBranch.text == "Create new branch")
             self._checkCanApply()
-
-    def createNewBranch(self) -> None:
-        """
-        Run processing when user clicks "Apply" button.
-        """
-        with slicer.util.tryWithErrorDisplay("Failed to compute results.", waitCursor=True):
-            # Compute output
-            self.graph_branches = self.logic.processBranch(self._getParametersBegin(), self.graph_branches, True)
-
 
 #
 # pulmonary_arteries_segmentor_moduleLogic

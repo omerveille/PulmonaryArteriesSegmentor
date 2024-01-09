@@ -220,7 +220,7 @@
         </widget>
        </item>
        <item>
-        <widget class="QPushButton" name="createRoot">
+        <widget class="QPushButton" name="createBranch">
          <property name="enabled">
           <bool>true</bool>
          </property>
@@ -233,9 +233,9 @@
         </widget>
        </item>
        <item>
-        <widget class="QPushButton" name="createNewBranch">
+        <widget class="QPushButton" name="saveTree">
          <property name="text">
-          <string>Create new branch</string>
+          <string>Save tree</string>
          </property>
         </widget>
        </item>
@@ -243,13 +243,6 @@
         <widget class="QPushButton" name="clearTree">
          <property name="text">
           <string>Clear tree</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QPushButton" name="saveTree">
-         <property name="text">
-          <string>Save tree</string>
          </property>
         </widget>
        </item>

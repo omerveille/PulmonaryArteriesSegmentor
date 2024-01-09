@@ -92,7 +92,7 @@ class GraphBranches():
 
 
         dialog = qt.QFileDialog()
-        folder_path = dialog.getExistingDirectory(None, "Sélectionnez un dossier")
+        folder_path = dialog.getExistingDirectory(None, "Choose a folder")
         # save with pickle
         with open(f'{folder_path}/graph_tree.pickle', 'wb') as f:
             pickle.dump(branch_graph, f, pickle.HIGHEST_PROTOCOL)
@@ -118,6 +118,14 @@ class GraphBranches():
 
 
     def clear_all(self):
+        msg = qt.QMessageBox()
+        msg.setWindowTitle("Confirmation")
+        msg.setText("Are you sure you want to clear the tree ?")
+        msg.setStandardButtons(qt.QMessageBox.Yes | qt.QMessageBox.No)
+
+        if msg.exec_() != qt.QMessageBox.Yes:
+            return
+
         self.branch_list = []
         self.nodes = []
         self.edges = []
