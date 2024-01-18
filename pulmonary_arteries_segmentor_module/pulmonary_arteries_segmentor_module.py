@@ -1,25 +1,20 @@
+import importlib
 import os
+import sys
 from typing import Annotated, Optional
 
 import numpy as np
-import vtk
-
 import slicer
+import vtk
 from slicer.ScriptedLoadableModule import (ScriptedLoadableModuleWidget, ScriptedLoadableModuleLogic,
                                            ScriptedLoadableModule, ScriptedLoadableModuleTest)
-from slicer.util import VTKObservationMixin
 from slicer.parameterNodeWrapper import (
     parameterNodeWrapper,
     WithinRange,
 )
-from slicer.parameterNodeWrapper.validators import Choice
-
+from slicer.util import VTKObservationMixin
+from vtkSlicerMarkupsModuleMRMLPython import vtkMRMLMarkupsNode
 from slicer import (vtkMRMLScalarVolumeNode, vtkMRMLMarkupsFiducialNode)
-import tempfile
-
-
-import importlib
-import sys
 
 try:
     to_reload = [key for key in sys.modules.keys() if "ransac_slicer." in key]
@@ -31,6 +26,8 @@ except Exception as e:
 from ransac_slicer.ransac import run_ransac
 from ransac_slicer.graph_branches import GraphBranches
 from ransac_slicer.branch_tree import BranchTree
+from ransac_slicer.volume import volume
+
 
 #
 # pulmonary_arteries_segmentor_module
@@ -47,7 +44,8 @@ class pulmonary_arteries_segmentor_module(ScriptedLoadableModule):
         self.parent.categories = [
             "Segmentation"]  # TODO: set categories (folders where the module shows up in the module selector)
         self.parent.dependencies = []  # TODO: add here list of module names that this module requires
-        self.parent.contributors = ["Gabriel Jacquinot", "Azéline Aillet"]  # TODO: replace with "Firstname Lastname (Organization)"
+        self.parent.contributors = ["Gabriel Jacquinot",
+                                    "Azéline Aillet"]  # TODO: replace with "Firstname Lastname (Organization)"
         # TODO: update with short description of the module and a link to online module documentation
         self.parent.helpText = """
 This is an example of scripted loadable module bundled in an extension.
@@ -136,16 +134,6 @@ class pulmonary_arteries_segmentor_moduleParameterNode:
     percentThreshold: Annotated[float, WithinRange(0, 100)] = 30.
     startingRadius: float
 
-    # Segmentation tab
-    valueInflation: Annotated[float, WithinRange(-100, 100)] = 0
-    valueCurvature: Annotated[float, WithinRange(-100, 100)] = 70
-    valueAttractionGradient: Annotated[float, WithinRange(-100, 100)] = 50
-    valueIterations: float = 10
-
-    segmentationStrategy: Annotated[str, Choice(["One vessel per branch", "One vessel per parent child", "One vessel per parent and sub child", "One vessel for whole tree"])] = "One vessel per branch"
-    segmentationInitialization: Annotated[str, Choice(["Colliding Fronts", "Fast Marching"])] = "Colliding Fronts"
-    segmentationMethod: Annotated[str, Choice(["Geodesic", "Curves"])] = "Geodesic"
-
 
 #
 # pulmonary_arteries_segmentor_moduleWidget
@@ -160,12 +148,14 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         """
         Called when the user opens the module the first time and the widget is initialized.
         """
+
         ScriptedLoadableModuleWidget.__init__(self, parent)
         VTKObservationMixin.__init__(self)  # needed for parameter node observation
         self.logic = None
         self._parameterNode = None
         self._parameterNodeGuiTag = None
         self.graph_branches = None
+        self.segmentationNode = None
 
     def setup(self) -> None:
         """
@@ -205,6 +195,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         self.ui.clearTree.connect('clicked(bool)', self.graph_branches.clear_all)
         self.ui.clearTree.connect('clicked(bool)', self._checkCanApply)
         self.ui.saveTree.connect('clicked(bool)', self.graph_branches.save_networkX)
+        self.ui.segmentButton.connect('clicked(bool)', self.onStartSegmentationButton)
 
         # Make sure parameter node is initialized (needed for module reload)
         self.initializeParameterNode()
@@ -284,6 +275,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
                 self._parameterNode.directionPoint, self._parameterNode.percentInlierPoints,
                 self._parameterNode.percentThreshold, self._parameterNode.startingRadius]
 
+
     def _getParametersSegmentation(self) -> list:
         return [self._parameterNode.valueInflation, self._parameterNode.valueCurvature,
                 self._parameterNode.valueAttractionGradient, self._parameterNode.valueIterations,
@@ -291,7 +283,21 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
                 self._parameterNode.segmentationMethod]
 
     def _checkCanApply(self, caller=None, event=None) -> None:
-        if self._parameterNode and all(self._getParametersBegin()):
+        starting_point = self._parameterNode.startingPoint
+        direction_point = self._parameterNode.directionPoint
+
+        if starting_point and not self.hasObserver(starting_point, vtkMRMLMarkupsNode.PointAddedEvent,
+                                                   self._checkCanApply):
+            self.addObserver(starting_point, vtkMRMLMarkupsNode.PointAddedEvent, self._checkCanApply)
+            self.addObserver(starting_point, vtkMRMLMarkupsNode.PointRemovedEvent, self._checkCanApply)
+
+        if direction_point and not self.hasObserver(direction_point, vtkMRMLMarkupsNode.PointAddedEvent,
+                                                    self._checkCanApply):
+            self.addObserver(direction_point, vtkMRMLMarkupsNode.PointAddedEvent, self._checkCanApply)
+            self.addObserver(direction_point, vtkMRMLMarkupsNode.PointRemovedEvent, self._checkCanApply)
+
+        if self._parameterNode and all(
+                self._getParametersBegin()) and starting_point.GetNumberOfControlPoints() and direction_point.GetNumberOfControlPoints():
             self.ui.createBranch.enabled = True
             if len(self.graph_branches.names) == 0:
                 self.ui.createBranch.text = "Create root"
@@ -314,14 +320,90 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
             self.ui.saveTree.toolTip = "There is nothing to save"
             self.ui.saveTree.enabled = False
 
-        # TODO FOR tab branches
-
     def create_branch(self) -> None:
-        with slicer.util.tryWithErrorDisplay("Failed to compute results.", waitCursor=True):
+        with slicer.util.tryWithErrorDisplay("Failed to compute segmentation.", waitCursor=True):
             # Compute output
+            progress_bar = slicer.util.createProgressDialog(parent=slicer.util.mainWindow(), autoClose=False,
+                                                            labelText="Please wait", windowTitle="Running RANSAC...",
+                                                            value=0)
+            progress_bar.setCancelButton(None)
+            slicer.app.processEvents()
             self.old_graph_branches = self.graph_branches
             self.graph_branches = self.logic.processBranch(self._getParametersBegin(), self.graph_branches, self.ui.createBranch.text == "Create new branch")
+            progress_bar.hide()
+            progress_bar.close()
             self._checkCanApply()
+
+
+    def paintArteriesWithMarkup(self):
+        segmentation = self.segmentationNode.GetSegmentation()
+
+        segment = segmentation.GetSegment(self.arteriesSegmentId)
+        name = segment.GetName()
+        color = segment.GetColor()
+
+        segmentation.RemoveSegment(self.arteriesSegmentId)
+        self.arteriesSegmentId = segmentation.AddEmptySegment("", name, color)
+
+        segmentEditorWidget = slicer.qMRMLSegmentEditorWidget()
+        segmentEditorWidget.setMRMLScene(slicer.mrmlScene)
+        segmentEditorNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLSegmentEditorNode")
+        segmentEditorWidget.setMRMLSegmentEditorNode(segmentEditorNode)
+        segmentEditorWidget.setSegmentationNode(self.segmentationNode)
+        segmentEditorNode.SetOverwriteMode(slicer.vtkMRMLSegmentEditorNode.OverwriteNone)
+        segmentEditorNode.SetMaskMode(slicer.vtkMRMLSegmentationNode.EditAllowedEverywhere)
+        segmentEditorNode.SetOverwriteMode(slicer.vtkMRMLSegmentEditorNode.OverwriteNone)
+        segmentEditorNode.SetMaskMode(slicer.vtkMRMLSegmentationNode.EditAllowedEverywhere)
+        segmentEditorNode.SetSelectedSegmentID(self.arteriesSegmentId)
+        segmentEditorWidget.setActiveEffectByName("Logical operators")
+
+        for markup_node_idx in range(len(self.graph_branches.centers_line_markups)):
+
+            markupsNode = self.graph_branches.centers_line_markups[markup_node_idx]
+            for point_idx in range(markupsNode.GetNumberOfControlPoints()):
+                point_pos = [0, 0, 0]
+                markupsNode.GetNthControlPointPosition(point_idx, point_pos)
+                radius = self.graph_branches.centers_line_radius[markup_node_idx][point_idx]
+
+                sphere = vtk.vtkSphereSource()
+                sphere.SetCenter(point_pos)
+                sphere.SetRadius(radius)
+                sphere.Update()
+
+                tmp_segment_id = self.segmentationNode.AddSegmentFromClosedSurfaceRepresentation(sphere.GetOutput(),
+                                                                                                 "tmp_segment", color)
+                effect = segmentEditorWidget.activeEffect()
+                effect.setParameter("BypassMasking", "1")
+                effect.setParameter("ModifierSegmentID", tmp_segment_id)
+                effect.setParameter("Operation", "UNION")
+                effect.self().onApply()
+                segmentation.RemoveSegment(tmp_segment_id)
+
+
+    def onStartSegmentationButton(self) -> None:
+        with slicer.util.tryWithErrorDisplay("Failed to compute segmentation.", waitCursor=True):
+            print(
+                f"onStartSegmentationButton | segmentationNode exists {self.segmentationNode is not None} | volume active {self._parameterNode.inputVolume is not None}")
+            if self.segmentationNode is None:
+                self.segmentationNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLSegmentationNode")
+                self.segmentationNode.SetName("Lung Segmentation")
+                self.segmentationNode.CreateDefaultDisplayNodes()
+                self.lungsSegmentId = self.segmentationNode.GetSegmentation().AddEmptySegment("", "Lungs",
+                                                                                              [128. / 255., 174. / 255,
+                                                                                               128. / 255.])
+                self.arteriesSegmentId = self.segmentationNode.GetSegmentation().AddEmptySegment("", "Arteries",
+                                                                                                 [216. / 255., 101. / 255,
+                                                                                                  79. / 255.])
+                self.otherSegmentId = self.segmentationNode.GetSegmentation().AddEmptySegment("", "Other",
+                                                                                              [230. / 255., 220. / 255,
+                                                                                               70. / 255.])
+
+            if self._parameterNode.inputVolume:
+                self.segmentationNode.SetReferenceImageGeometryParameterFromVolumeNode(self._parameterNode.inputVolume)
+
+            if self.graph_branches and len(self.graph_branches.centers_line_markups):
+                self.paintArteriesWithMarkup()
+
 
 #
 # pulmonary_arteries_segmentor_moduleLogic
@@ -347,25 +429,31 @@ class pulmonary_arteries_segmentor_moduleLogic(ScriptedLoadableModuleLogic):
         return pulmonary_arteries_segmentor_moduleParameterNode(super().getParameterNode())
 
     def processBranch(self, params: list, graph_branches: GraphBranches, isNewBranch: bool) -> None:
-        # [self._parameterNode.inputVolume, self._parameterNode.startingPoint, self._parameterNode.directionPoint, self._parameterNode.percentInlierPoints, self._parameterNode.percentThreshold, self._parameterNode.startingRadius]
         """
-        def run_ransac(input_volume_path, input_centers_curve_path, output_centers_curve_path, input_contour_point_path,
+        def run_ransac(vol, input_centers_curve_path, output_centers_curve_path, input_contour_point_path,
          output_contour_point_path, starting_point, direction_point, starting_radius, pct_inlier_points, threshold):
         """
-        with tempfile.TemporaryDirectory() as tmpdirname:
-            _, input_volume_path = tempfile.mkstemp(prefix="input_volume_", suffix=".nrrd", dir=tmpdirname)
-            slicer.util.exportNode(params[0], input_volume_path)
 
-            starting_point = np.array([0, 0, 0])
-            params[1].GetNthControlPointPosition(0, starting_point)
+        vol = slicer.util.array(params[0].GetID())
+        vol = vol.swapaxes(0, 2)
 
-            direction_point = np.array([0, 0, 0])
-            params[2].GetNthControlPointPosition(0, direction_point)
+        ijk_to_ras = vtk.vtkMatrix4x4()
+        params[0].GetIJKToRASMatrix(ijk_to_ras)
+        np_ijk_to_ras = np.zeros(shape=(4, 4))
+        ijk_to_ras.DeepCopy(np_ijk_to_ras.ravel(), ijk_to_ras)
 
-            graph_branches = run_ransac(input_volume_path, starting_point, direction_point, params[5],
-                                                   params[3], params[4], graph_branches, isNewBranch)
+        vol = volume(vol, np_ijk_to_ras)
 
-            return graph_branches
+        starting_point = np.array([0, 0, 0])
+        params[1].GetNthControlPointPosition(0, starting_point)
+
+        direction_point = np.array([0, 0, 0])
+        params[2].GetNthControlPointPosition(0, direction_point)
+
+        graph_branches = run_ransac(vol, starting_point, direction_point, params[5],
+                                    params[3], params[4], graph_branches, isNewBranch)
+
+        return graph_branches
 #
 # pulmonary_arteries_segmentor_moduleTest
 #

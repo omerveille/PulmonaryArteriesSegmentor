@@ -16,6 +16,7 @@ class GraphBranches():
         self.names = []                  # list of names in each edges
         self.centers_lines = []          # list of shape (n,m,3) with n = number of branches and m = number of points in the current center line
         self.contours_points = []        # list of shape (n,m,l,3) with n = number of branches, m = number of points in the current center line and l = number of points in the current contour
+        self.centers_line_radius = []    # list of shape (n,m) with n = number of branches and m = the radius of each points of the center line
         self.centers_line_markups = []   # list of markups for centers line
         self.contour_points_markups = [] # list of markups for contour points
 
@@ -44,7 +45,7 @@ class GraphBranches():
         self.contour_points_markups.append(new_contour_points)
 
 
-    def create_new_branch(self, edge, centers_line, contour_points, parent_node=None):
+    def create_new_branch(self, edge, centers_line, contour_points, center_line_radius, parent_node=None):
         new_branch_list = []
         for cp in centers_line:
             new_branch_list.append(cylinder(center=np.array(cp)))
@@ -52,9 +53,12 @@ class GraphBranches():
 
         self.edges.append(edge)
         new_name = "b"+str(len(self.edges))
+
         self.names.append(new_name)
         self.centers_lines.append(centers_line)
         self.contours_points.append(contour_points)
+        self.centers_line_radius.append(center_line_radius)
+
         self.create_new_markups(new_name, centers_line, contour_points)
         self.tree_widget.insertAfterNode(nodeId=new_name, parentNodeId=parent_node)
 
@@ -62,11 +66,14 @@ class GraphBranches():
     def update_graph(self, idx_cb, idx_cyl, parent_node):
         centers_line = self.centers_lines[idx_cb]
         contour_points = self.contours_points[idx_cb]
+        centers_line_radius = self.centers_line_radius[idx_cb]
         branch_list = self.branch_list[idx_cb]
 
         # Modify old branch which became a parent
         self.centers_lines[idx_cb] = centers_line[:min(idx_cyl+1, len(centers_line)-1)]
         self.contours_points[idx_cb] = contour_points[:min(idx_cyl+1, len(centers_line)-1)]
+        self.centers_line_radius[idx_cb] = centers_line_radius[:min(idx_cyl+1, len(centers_line)-1)]
+
         slicer.util.updateMarkupsControlPointsFromArray(self.centers_line_markups[idx_cb], self.centers_lines[idx_cb])
         slicer.util.updateMarkupsControlPointsFromArray(self.contour_points_markups[idx_cb], np.array([elt for pts in self.contours_points[idx_cb] for elt in pts]))
         self.branch_list[idx_cb] = branch_list[:min(idx_cyl+1, len(centers_line)-1)]
@@ -77,9 +84,9 @@ class GraphBranches():
         self.edges[idx_cb] = (self.edges[idx_cb][0], len(self.nodes)-1)
 
         # Create new branch from the old one but as a child
-        self.create_new_branch((len(self.nodes)-1, old_end), centers_line[idx_cyl:], contour_points[min(idx_cyl+1, len(centers_line)-1):], parent_node)
+        self.create_new_branch((len(self.nodes)-1, old_end), centers_line[idx_cyl:], contour_points[min(idx_cyl+1, len(centers_line)-1):], centers_line_radius[idx_cyl:], parent_node)
 
-        return centers_line[idx_cyl:min(idx_cyl+1, len(centers_line)-1)]
+        return centers_line[idx_cyl:min(idx_cyl+1, len(centers_line)-1)], centers_line_radius[idx_cyl:min(idx_cyl+1, len(centers_line_radius)-1)]
 
 
     def save_networkX(self):
@@ -133,6 +140,7 @@ class GraphBranches():
         self.names = []
         self.centers_lines = []
         self.contours_points = []
+        self.centers_line_radius = []
 
         size = len(self.centers_line_markups)
         for _ in range(size):
@@ -203,6 +211,7 @@ class GraphBranches():
         self.branch_list.pop(branch_id)
         self.centers_lines.pop(branch_id)
         self.contours_points.pop(branch_id)
+        self.centers_line_radius.pop(branch_id)
         slicer.mrmlScene.RemoveNode(self.centers_line_markups.pop(branch_id))
         slicer.mrmlScene.RemoveNode(self.contour_points_markups.pop(branch_id))
 
@@ -230,6 +239,8 @@ class GraphBranches():
         self.centers_lines.pop(child_idx)
         self.contours_points[parent_idx] += self.contours_points[child_idx]
         self.contours_points.pop(child_idx)
+        self.centers_line_radius[parent_idx] += self.centers_line_radius[child_idx]
+        self.centers_line_radius.pop(child_idx)
         slicer.util.updateMarkupsControlPointsFromArray(self.centers_line_markups[parent_idx], self.centers_lines[parent_idx])
         slicer.util.updateMarkupsControlPointsFromArray(self.contour_points_markups[parent_idx], np.array([elt for pts in self.contours_points[parent_idx] for elt in pts]))
         slicer.mrmlScene.RemoveNode(self.centers_line_markups.pop(child_idx))

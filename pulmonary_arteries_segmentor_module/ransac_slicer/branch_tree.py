@@ -32,6 +32,7 @@ class BranchTreeItem(qt.QTreeWidgetItem):
 
   def updateText(self):
     self.setText(0, f"{self.nodeId}")
+    self.setText(0, f"{self.nodeId}")
 
 class BranchTree(qt.QTreeWidget):
   """Tree representation of vessel branch nodes.

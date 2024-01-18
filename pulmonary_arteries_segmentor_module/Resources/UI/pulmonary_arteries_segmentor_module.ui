@@ -13,6 +13,12 @@
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
     <widget class="QTabWidget" name="tabWidget">
+     <property name="maximumSize">
+      <size>
+       <width>16777215</width>
+       <height>16777215</height>
+      </size>
+     </property>
      <property name="currentIndex">
       <number>0</number>
      </property>
@@ -261,225 +267,21 @@
        </item>
       </layout>
      </widget>
-     <widget class="QWidget" name="levelset">
+     <widget class="QWidget" name="segmentation">
       <attribute name="title">
        <string>Segmentation</string>
       </attribute>
       <layout class="QVBoxLayout" name="verticalLayout_2">
-       <item>
-        <widget class="ctkCollapsibleButton" name="CollapsibleButton">
-         <property name="text">
-          <string>LevelSet Options</string>
+       <item alignment="Qt::AlignHCenter">
+        <widget class="QPushButton" name="segmentButton">
+         <property name="maximumSize">
+          <size>
+           <width>16777215</width>
+           <height>16777215</height>
+          </size>
          </property>
-         <layout class="QFormLayout" name="formLayout_3">
-          <item row="0" column="0">
-           <widget class="QLabel" name="label_4">
-            <property name="text">
-             <string>Inflation:</string>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="1">
-           <widget class="ctkSliderWidget" name="inflationSliderWidget">
-            <property name="decimals">
-             <number>0</number>
-            </property>
-            <property name="singleStep">
-             <double>10.000000000000000</double>
-            </property>
-            <property name="minimum">
-             <double>-100.000000000000000</double>
-            </property>
-            <property name="SlicerParameterName" stdset="0">
-             <string>valueInflation</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="0">
-           <widget class="QLabel" name="label_11">
-            <property name="text">
-             <string>Curvature:</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="1">
-           <widget class="ctkSliderWidget" name="curvatureSliderWidget">
-            <property name="decimals">
-             <number>0</number>
-            </property>
-            <property name="singleStep">
-             <double>10.000000000000000</double>
-            </property>
-            <property name="minimum">
-             <double>-100.000000000000000</double>
-            </property>
-            <property name="value">
-             <double>70.000000000000000</double>
-            </property>
-            <property name="SlicerParameterName" stdset="0">
-             <string>valueCurvature</string>
-            </property>
-           </widget>
-          </item>
-          <item row="2" column="0">
-           <widget class="QLabel" name="label_10">
-            <property name="text">
-             <string>Attraction to gradient:</string>
-            </property>
-           </widget>
-          </item>
-          <item row="2" column="1">
-           <widget class="ctkSliderWidget" name="attractionGradientSliderWidget">
-            <property name="decimals">
-             <number>0</number>
-            </property>
-            <property name="singleStep">
-             <double>10.000000000000000</double>
-            </property>
-            <property name="minimum">
-             <double>-100.000000000000000</double>
-            </property>
-            <property name="value">
-             <double>50.000000000000000</double>
-            </property>
-            <property name="SlicerParameterName" stdset="0">
-             <string>valueAttractionGradient</string>
-            </property>
-           </widget>
-          </item>
-          <item row="3" column="0">
-           <widget class="QLabel" name="label_9">
-            <property name="text">
-             <string>Iterations:</string>
-            </property>
-           </widget>
-          </item>
-          <item row="3" column="1">
-           <widget class="QDoubleSpinBox" name="iterationsDoubleSpinBox">
-            <property name="decimals">
-             <number>0</number>
-            </property>
-            <property name="singleStep">
-             <double>10.000000000000000</double>
-            </property>
-            <property name="value">
-             <double>10.000000000000000</double>
-            </property>
-            <property name="SlicerParameterName" stdset="0">
-             <string>valueIterations</string>
-            </property>
-           </widget>
-          </item>
-          <item row="4" column="0">
-           <widget class="QLabel" name="label_5">
-            <property name="text">
-             <string>Segmentation strategy:</string>
-            </property>
-           </widget>
-          </item>
-          <item row="4" column="1">
-           <widget class="QComboBox" name="strategyComboBox">
-            <property name="SlicerParameterName" stdset="0">
-             <string>segmentationStrategy</string>
-            </property>
-            <item>
-             <property name="text">
-              <string>One vessel per branch</string>
-             </property>
-            </item>
-            <item>
-             <property name="text">
-              <string>One vessel per parent child</string>
-             </property>
-            </item>
-            <item>
-             <property name="text">
-              <string>One vessel per parent and sub child</string>
-             </property>
-            </item>
-            <item>
-             <property name="text">
-              <string>One vessel for whole tree</string>
-             </property>
-            </item>
-           </widget>
-          </item>
-          <item row="5" column="0">
-           <widget class="QLabel" name="label_6">
-            <property name="text">
-             <string>Segmentation initialization:</string>
-            </property>
-           </widget>
-          </item>
-          <item row="5" column="1">
-           <widget class="QComboBox" name="initializationComboBox">
-            <property name="SlicerParameterName" stdset="0">
-             <string>segmentationInitialization</string>
-            </property>
-            <item>
-             <property name="text">
-              <string>Colliding Fronts</string>
-             </property>
-            </item>
-            <item>
-             <property name="text">
-              <string>Fast Marching</string>
-             </property>
-            </item>
-           </widget>
-          </item>
-          <item row="6" column="0">
-           <widget class="QLabel" name="label_7">
-            <property name="text">
-             <string>Segmentation method:</string>
-            </property>
-           </widget>
-          </item>
-          <item row="6" column="1">
-           <widget class="QComboBox" name="methodComboBox">
-            <property name="SlicerParameterName" stdset="0">
-             <string>segmentationMethod</string>
-            </property>
-            <item>
-             <property name="text">
-              <string>Geodesic</string>
-             </property>
-            </item>
-            <item>
-             <property name="text">
-              <string>Curves</string>
-             </property>
-            </item>
-           </widget>
-          </item>
-          <item row="7" column="0">
-           <widget class="QLabel" name="label_8">
-            <property name="text">
-             <string>Restore default parameters:</string>
-            </property>
-           </widget>
-          </item>
-          <item row="7" column="1">
-           <widget class="QPushButton" name="restoreButton">
-            <property name="text">
-             <string>Restore</string>
-            </property>
-           </widget>
-          </item>
-          <item row="8" column="0" colspan="2">
-           <widget class="QPushButton" name="runSegmentation">
-            <property name="text">
-             <string>Run Segmentation</string>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </widget>
-       </item>
-       <item>
-        <widget class="ctkCollapsibleButton" name="CollapsibleButton_2">
          <property name="text">
-          <string>Region Growing Options</string>
+          <string>Start segmentation</string>
          </property>
         </widget>
        </item>
