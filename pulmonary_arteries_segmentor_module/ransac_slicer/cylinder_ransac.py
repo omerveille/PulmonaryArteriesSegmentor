@@ -699,7 +699,7 @@ def track_cylinder(vol, cyl, cfg):
             break
 
 
-def track_branch(vol, cyl, cfg, centers_line, branch):
+def track_branch(vol, cyl, cfg, centers_line, center_line_radius, branch):
     """
     Performs the tracking in a volume, given an input cylinder and a configuration
 
@@ -707,31 +707,27 @@ def track_branch(vol, cyl, cfg, centers_line, branch):
         vol (volume): Input volume
         cyl (cylinder): Input cylinder
         cfg (config): Configuration for the tracking
-        centers_curve (dict): Centers curve's data
-        output_centers_curve_path (str): Results centers curve filepath
-        contour_point (dict): Contour points' data
-        output_contour_point_path (str): Results contour points filepath
+        centers_curve (np.ndarray): Centers curve's data
+        contour_point (np.ndarray): Contour points' data
     """
 
     contour_points = []
-    for _, (c, i) in enumerate(track_cylinder(vol, cyl, cfg)):
+    for _, (_cylinder, current_contour_points) in enumerate(track_cylinder(vol, cyl, cfg)):
         # Criteria for acceptance: Need to be better justified especially third one
         #   1- Valid cylinder (i.shape[0] > 0)
         #   2- Sufficient advance: |c.center-cyl.center| > cyl.height/4
         #   3- Not redundant: d(c,branch) > cyl.radius/10
         # (Note: what if cyl.height/4 < cyl.radius/10?)
 
-        if i.shape[0] > 0 and not c.is_redundant(branch):
-            branch.append(c)
+        if current_contour_points.shape[0] > 0 and not _cylinder.is_redundant(branch):
+            branch.append(_cylinder)
 
-            centers_line = np.vstack((centers_line, c.center))
+            centers_line = np.vstack((centers_line, _cylinder.center))
+            contour_points.append(current_contour_points.tolist())
 
-            tmp_countours = np.empty((0,3))
-            for point in i:
-                tmp_countours = np.vstack((tmp_countours, point))
-
-            contour_points.append(tmp_countours.tolist())
+            radius = np.linalg.norm(current_contour_points - _cylinder.center, axis=1).min()
+            center_line_radius.append(radius)
 
         else:
             break
-    return centers_line, contour_points
+    return centers_line, contour_points, center_line_radius
