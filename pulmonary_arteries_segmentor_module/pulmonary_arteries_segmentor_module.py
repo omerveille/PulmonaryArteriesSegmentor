@@ -25,7 +25,7 @@ except Exception as e:
 
 from ransac_slicer.ransac import run_ransac
 from ransac_slicer.graph_branches import GraphBranches
-from ransac_slicer.branch_tree import BranchTree
+from ransac_slicer.branch_tree import BranchTree, TreeColumnRole, Icons
 from ransac_slicer.volume import volume
 
 
@@ -195,7 +195,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         self.ui.clearTree.connect('clicked(bool)', self.graph_branches.clear_all)
         self.ui.clearTree.connect('clicked(bool)', self._checkCanApply)
         self.ui.saveTree.connect('clicked(bool)', self.graph_branches.save_networkX)
-        self.ui.segmentButton.connect('clicked(bool)', self.onStartSegmentationButton)
+        self.ui.paintButton.connect('clicked(bool)', self.onStartSegmentationButton)
 
         # Make sure parameter node is initialized (needed for module reload)
         self.initializeParameterNode()
@@ -382,8 +382,6 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
 
     def onStartSegmentationButton(self) -> None:
         with slicer.util.tryWithErrorDisplay("Failed to compute segmentation.", waitCursor=True):
-            print(
-                f"onStartSegmentationButton | segmentationNode exists {self.segmentationNode is not None} | volume active {self._parameterNode.inputVolume is not None}")
             if self.segmentationNode is None:
                 self.segmentationNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLSegmentationNode")
                 self.segmentationNode.SetName("Lung Segmentation")
@@ -402,7 +400,34 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
                 self.segmentationNode.SetReferenceImageGeometryParameterFromVolumeNode(self._parameterNode.inputVolume)
 
             if self.graph_branches and len(self.graph_branches.centers_line_markups):
+                # Create a progress bar
+                progress_bar = slicer.util.createProgressDialog(parent=slicer.util.mainWindow(), autoClose=False,
+                                                                labelText="Please wait",
+                                                                windowTitle="Painting Segmentation...",
+                                                                value=0)
+                progress_bar.setCancelButton(None)
+                slicer.app.processEvents()
+
+                # Paint the segmentation
                 self.paintArteriesWithMarkup()
+
+                # Make the segmentation visible
+                if not self.segmentationNode.GetSegmentation().ContainsRepresentation("Closed surface"):
+                    self.segmentationNode.CreateClosedSurfaceRepresentation()
+                self.segmentationNode.GetDisplayNode().SetVisibility3D(True)
+
+                # Hide markup nodes
+                for markup in [self.graph_branches.centers_line_markups, self.graph_branches.contour_points_markups]:
+                    for branch in markup:
+                        branch.GetDisplayNode().SetVisibility(False)
+
+                for icon in self.graph_branches.tree_widget._branchDict.values():
+                    icon.setIcon(TreeColumnRole.VISIBILITY_CENTER, Icons.visibleOff)
+                    icon.setIcon(TreeColumnRole.VISIBILITY_CONTOUR, Icons.visibleOff)
+
+                # Hide and close progress bar
+                progress_bar.hide()
+                progress_bar.close()
 
 
 #
