@@ -217,10 +217,15 @@ class BranchTree(qt.QTreeWidget):
       if hasRoot:
         rootItem = self.takeTopLevelItem(0)
         nodeItem.addChild(rootItem)
+      self._branchDict[nodeId] = nodeItem
     else:
+      children = self.getChildrenNodeId(parentId)
       self._branchDict[parentId].addChild(nodeItem)
+      self._branchDict[nodeId] = nodeItem
+      if len(children) == 2:
+        for child in children:
+          self._insertNode(child, nodeId)
 
-    self._branchDict[nodeId] = nodeItem
     return nodeItem
 
   def insertAfterNode(self, nodeId, parentNodeId):
