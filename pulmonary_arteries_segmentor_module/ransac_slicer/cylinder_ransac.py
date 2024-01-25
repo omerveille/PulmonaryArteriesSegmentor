@@ -12,7 +12,7 @@ class config:
     _max_radius = 5
 
     def __init__(self, nb_test_min=0, nb_test_max=1000, percent_inliers=0.5, threshold=0.1, radius_min=0.5,
-                 radius_max=1.5, angle_max=np.pi / 2, nb_cyl_dirs=81, nb_ray_dirs=162, n_samples=128, ray_length=3,
+                 radius_max=1.5, angle_max=np.pi / 3, nb_cyl_dirs=81, nb_ray_dirs=162, n_samples=128, ray_length=2,
                  nb_iter=1000):
         """
         Initialize algorithm's configuration
@@ -587,8 +587,12 @@ def next_cylinder(vol, cyl, cfg):
         p_max = 0
         c_max = cylinder.cylinder()
         i_max = np.empty((0, 3))
+        # print("cyl direction:", cyl.direction)
 
         for axis in cfg.cyl_dir_set[idx]:
+            if np.abs(cyl.direction @ axis) < np.cos(cfg.a_max):
+                continue
+            # print("axis", axis, "calcul:", cyl.direction @ axis)
             c, inliers, p_inl = fit_cylinder_ransac(p, axis, cfg.nb_test_min, cfg.nb_test_max, cfg.pct_inl, r_min,
                                                     r_max, err_threshold)
 
@@ -655,7 +659,7 @@ def next_cylinder(vol, cyl, cfg):
 
         # Fixes cylinder direction so that it points in the same direction as the tracking advance necessary for next
         # step (computation of next guess)
-        if (c_max.center - cyl.center) @ c_max.direction < 0:
+        if c_max.direction @ cyl.direction < 0:
             c_max.direction = -c_max.direction
 
         # Fixes height, and select inliers with this height
@@ -666,7 +670,7 @@ def next_cylinder(vol, cyl, cfg):
         if np.linalg.norm(c_max.center - cyl.center) > cyl.height / 8:
             # Restore interpolation order
             vol.order = order
-
+            # print("found cyl with direction:", c_max.direction, "and angle:",cyl.direction @ c_max.direction)
             return c_max, i_max
 
     # No new cylinder was found
