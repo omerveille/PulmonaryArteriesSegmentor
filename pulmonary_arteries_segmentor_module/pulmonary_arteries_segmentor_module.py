@@ -176,6 +176,17 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         # "setMRMLScene(vtkMRMLScene*)" slot.
         uiWidget.setMRMLScene(slicer.mrmlScene)
 
+        segmentEditorSingletonTag = "SegmentEditor"
+        segmentEditorNode = slicer.mrmlScene.GetSingletonNode(segmentEditorSingletonTag, "vtkMRMLSegmentEditorNode")
+        if segmentEditorNode is None:
+            segmentEditorNode = slicer.mrmlScene.CreateNodeByClass("vtkMRMLSegmentEditorNode")
+            segmentEditorNode.UnRegister(None)
+            segmentEditorNode.SetSingletonTag(segmentEditorSingletonTag)
+            segmentEditorNode = slicer.mrmlScene.AddNode(segmentEditorNode)
+        if not hasattr(self, "segmentEditorNode") or self.segmentEditorNode != segmentEditorNode:
+            self.segmentEditorNode = segmentEditorNode
+            self.ui.SegmentEditorWidget.setMRMLSegmentEditorNode(self.segmentEditorNode)
+
         # Create logic class. Logic implements all computations that should be possible to run
         # in batch mode, without a graphical user interface.
         self.logic = pulmonary_arteries_segmentor_moduleLogic()
@@ -354,18 +365,18 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
 
         segmentation.RemoveSegment(self.arteriesSegmentId)
         self.arteriesSegmentId = segmentation.AddEmptySegment("", name, color)
+        segment = segmentation.GetSegment(self.arteriesSegmentId)
 
-        segmentEditorWidget = slicer.qMRMLSegmentEditorWidget()
-        segmentEditorWidget.setMRMLScene(slicer.mrmlScene)
-        segmentEditorNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLSegmentEditorNode")
-        segmentEditorWidget.setMRMLSegmentEditorNode(segmentEditorNode)
+        segmentEditorWidget = self.ui.SegmentEditorWidget
+        segmentEditorNode = self.segmentEditorNode
+
         segmentEditorWidget.setSegmentationNode(self.segmentationNode)
-        segmentEditorNode.SetOverwriteMode(slicer.vtkMRMLSegmentEditorNode.OverwriteNone)
-        segmentEditorNode.SetMaskMode(slicer.vtkMRMLSegmentationNode.EditAllowedEverywhere)
-        segmentEditorNode.SetOverwriteMode(slicer.vtkMRMLSegmentEditorNode.OverwriteNone)
-        segmentEditorNode.SetMaskMode(slicer.vtkMRMLSegmentationNode.EditAllowedEverywhere)
         segmentEditorNode.SetSelectedSegmentID(self.arteriesSegmentId)
+
         segmentEditorWidget.setActiveEffectByName("Logical operators")
+
+        segmentEditorNode.SetOverwriteMode(slicer.vtkMRMLSegmentEditorNode.OverwriteNone)
+        segmentEditorNode.SetMaskMode(slicer.vtkMRMLSegmentationNode.EditAllowedEverywhere)
 
         for markup_node_idx in range(len(self.graph_branches.centers_line_markups)):
 
@@ -388,6 +399,11 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
                 effect.setParameter("Operation", "UNION")
                 effect.self().onApply()
                 segmentation.RemoveSegment(tmp_segment_id)
+
+        slicer.modules.segmentations.logic().SetSegmentStatus(segment, 0)
+        segmentEditorWidget.setActiveEffectByName("No editing")
+        segmentEditorNode.SetSelectedSegmentID(self.otherSegmentId)
+
         # Hide and close progress bar
         progress_bar.hide()
         progress_bar.close()
