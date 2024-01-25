@@ -36,7 +36,10 @@ def run_ransac(vol, starting_point, direction_point, starting_radius, pct_inlier
     # Perform tracking
     centers_line, contour_points, center_line_radius = track_branch(vol, cyl, cfg, end_center_line, end_center_radius, [elt for branch in graph_branches.branch_list for elt in branch])
 
-    graph_branches.nodes.append(centers_line[-1])
+    if len(centers_line) == 0:
+        graph_branches.nodes.append([])
+    else:
+        graph_branches.nodes.append(centers_line[-1])
     graph_branches.create_new_branch((len(graph_branches.nodes) - 2, len(graph_branches.nodes) - 1), centers_line, contour_points, center_line_radius, parent_node)
 
     return graph_branches
