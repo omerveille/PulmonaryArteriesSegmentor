@@ -483,11 +483,9 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         progress_bar.hide()
         progress_bar.close()
 
-
-
     def onStartSegmentationButton(self) -> None:
         with slicer.util.tryWithErrorDisplay("Failed to compute segmentation.", waitCursor=True):
-            if self.segmentationNode is None:
+            if self.segmentationNode is None or self.segmentationNode.GetScene() is None:
                 self.segmentationNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLSegmentationNode")
                 self.segmentationNode.SetName("Lung Segmentation")
                 self.segmentationNode.CreateDefaultDisplayNodes()
