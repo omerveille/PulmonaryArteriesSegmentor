@@ -460,7 +460,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         lungSegmentId = vtk.vtkStringArray()
         lungSegmentId.InsertNextValue(self.lungsSegmentId)
         slicer.modules.segmentations.logic().ImportLabelmapToSegmentationNode(labelMapNode, self.segmentationNode, lungSegmentId)
-        # slicer.mrmlScene.RemoveNode(labelMapNode)
+        slicer.mrmlScene.RemoveNode(labelMapNode)
 
 
         # Hide and close progress bar
