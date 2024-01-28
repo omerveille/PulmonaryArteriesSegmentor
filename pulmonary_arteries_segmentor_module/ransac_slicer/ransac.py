@@ -3,6 +3,7 @@ from .cylinder_ransac import (track_branch, config)
 from .cylinder import cylinder, closest_branch
 import numpy as np
 from ransac_slicer.graph_branches import GraphBranches
+import qt
 
 
 def run_ransac(vol, starting_point, direction_point, starting_radius, pct_inlier_points,
@@ -10,11 +11,16 @@ def run_ransac(vol, starting_point, direction_point, starting_radius, pct_inlier
     # Input info for branch tracking (in RAS coordinates)
     if isNewBranch:
         _, cb, idx_cb, idx_cyl = closest_branch(direction_point, graph_branches.branch_list)
+        if idx_cyl == len(graph_branches.centers_lines[idx_cb]) - 2:
+            idx_cyl = len(graph_branches.centers_lines[idx_cb]) - 1
         starting_point = cb[idx_cyl].center
 
         # Update Graph
         parent_node = graph_branches.names[idx_cb]
-        end_center_line, end_center_radius = graph_branches.update_graph(idx_cb, idx_cyl, parent_node)
+        if idx_cyl == len(graph_branches.centers_lines[idx_cb]) - 1:
+            end_center_line, end_center_radius = graph_branches.centers_lines[idx_cb][idx_cyl:idx_cyl+1], graph_branches.centers_line_radius[idx_cb][idx_cyl:idx_cyl+1]
+        else:
+            end_center_line, end_center_radius = graph_branches.split_branch(idx_cb, idx_cyl, parent_node)
     else:
         parent_node = None
         graph_branches.nodes.append(starting_point)
@@ -36,10 +42,15 @@ def run_ransac(vol, starting_point, direction_point, starting_radius, pct_inlier
     # Perform tracking
     centers_line, contour_points, center_line_radius = track_branch(vol, cyl, cfg, end_center_line, end_center_radius, [elt for branch in graph_branches.branch_list for elt in branch])
 
-    if len(centers_line) == 0:
-        graph_branches.nodes.append([])
+    if len(centers_line) <= 1:
+        msg = qt.QMessageBox()
+        msg.setIcon(qt.QMessageBox.Critical)
+        msg.setWindowTitle("Error")
+        msg.setText("Could not find any branch")
+        msg.exec_()
+        graph_branches.on_merge_only_child(parent_node)
     else:
         graph_branches.nodes.append(centers_line[-1])
-    graph_branches.create_new_branch((len(graph_branches.nodes) - 2, len(graph_branches.nodes) - 1), centers_line, contour_points, center_line_radius, parent_node)
+        graph_branches.create_new_branch((len(graph_branches.nodes) - 2, len(graph_branches.nodes) - 1), centers_line, contour_points, center_line_radius, parent_node)
 
     return graph_branches

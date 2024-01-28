@@ -51,8 +51,8 @@ class BranchTree(qt.QTreeWidget):
     self.itemChanged.connect(self.onItemChange)
     self.itemRenamed = Signal(str, str)
     self.itemDropped = Signal()
+    self.itemRemoveEnd = Signal("VesselBranchTreeItem")
     self.itemDeleted = Signal("VesselBranchTreeItem")
-    self.itemMergeOnlyChild = Signal("VesselBranchTreeItem")
 
     self._branchDict = {}
 
@@ -136,24 +136,25 @@ class BranchTree(qt.QTreeWidget):
     qt.QTreeWidget.keyPressEvent(self, event)
 
   def onContextMenu(self, position):
+    item = self.itemAt(position)
+
     renameAction = qt.QAction("Rename")
     renameAction.triggered.connect(self.renameItem)
+
+    removeEndAction = qt.QAction("Remove end of the branch")
+    removeEndAction.triggered.connect(lambda :self.itemRemoveEnd.emit(self.currentItem()))
+    if self.isLeaf(item.text(0)):
+        removeEndAction.setEnabled(True)
+    else:
+        removeEndAction.setEnabled(False)
 
     deleteAction = qt.QAction("Delete")
     deleteAction.triggered.connect(lambda :self.itemDeleted.emit(self.currentItem()))
 
-    mergeOnlyChild = qt.QAction("MergeOnlyChild")
-    item = self.itemAt(position)
-    if len(self.getChildrenNodeId(item.text(0))) == 1:
-        mergeOnlyChild.setEnabled(True)
-    else:
-        mergeOnlyChild.setEnabled(False)
-    mergeOnlyChild.triggered.connect(lambda :self.itemMergeOnlyChild.emit(self.currentItem()))
-
     menu = qt.QMenu(self)
     menu.addAction(renameAction)
+    menu.addAction(removeEndAction)
     menu.addAction(deleteAction)
-    menu.addAction(mergeOnlyChild)
 
     menu.exec_(self.mapToGlobal(position))
 
