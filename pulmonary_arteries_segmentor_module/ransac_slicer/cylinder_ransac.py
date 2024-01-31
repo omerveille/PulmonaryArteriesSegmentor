@@ -667,7 +667,10 @@ def next_cylinder(vol, cyl, cfg):
 
         # Test if a sufficient advance was made.
         # If not, we might try with a double advance_ratio (initial loop over li)
-        if np.linalg.norm(c_max.center - cyl.center) > cyl.height / 8:
+        if c_max.radius > 4:
+            c_max.height = c_max.radius
+        dist_centers = np.linalg.norm(c_max.center - cyl.center)
+        if dist_centers >= cyl.height / 2 and (cyl.height == 0 or dist_centers <= cyl.height * 2):
             # Restore interpolation order
             vol.order = order
             # print("found cyl with direction:", c_max.direction, "and angle:",cyl.direction @ c_max.direction)
