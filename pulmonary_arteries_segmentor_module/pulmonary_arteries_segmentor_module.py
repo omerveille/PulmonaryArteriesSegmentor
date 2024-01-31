@@ -5,8 +5,8 @@ from typing import Annotated, Optional
 
 import numpy as np
 import slicer
-import SimpleITK as sitk
 import vtk
+import qt
 
 from slicer.ScriptedLoadableModule import (ScriptedLoadableModuleWidget, ScriptedLoadableModuleLogic,
                                            ScriptedLoadableModule, ScriptedLoadableModuleTest)
@@ -158,6 +158,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         self._parameterNodeGuiTag = None
         self.graph_branches = None
         self.segmentationNode = None
+        self.nodeDeletionObserverTag = None
 
     def setup(self) -> None:
         """
@@ -205,7 +206,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
 
         # Buttons
         self.ui.createBranch.connect('clicked(bool)', self.create_branch)
-        self.ui.clearTree.connect('clicked(bool)', self.graph_branches.clear_all)
+        self.ui.clearTree.connect('clicked(bool)', lambda: (self.graph_branches.clear_all(), self.updateSegmentationButtonState()))
         self.ui.clearTree.connect('clicked(bool)', self._checkCanApply)
         self.ui.saveTree.connect('clicked(bool)', self.graph_branches.save_networkX)
         self.ui.paintButton.connect('clicked(bool)', self.onStartSegmentationButton)
@@ -281,6 +282,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
             # ui element that needs connection.
             self._parameterNodeGuiTag = self._parameterNode.connectGui(self.ui)
             self.addObserver(self._parameterNode, vtk.vtkCommand.ModifiedEvent, self._checkCanApply)
+            self.addObserver(self._parameterNode, vtk.vtkCommand.ModifiedEvent, self.updateSegmentationButtonState)
             self._checkCanApply()
 
     def _getParametersBegin(self) -> list:
@@ -314,23 +316,23 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
             self.ui.createBranch.enabled = True
             if len(self.graph_branches.names) == 0:
                 self.ui.createBranch.text = "Create root"
-                self.ui.createBranch.toolTip = "Create root"
+                self.ui.createBranch.toolTip = "Create root."
             else:
                 self.ui.createBranch.text = "Create new branch"
-                self.ui.createBranch.toolTip = "Create new branch"
+                self.ui.createBranch.toolTip = "Create new branch."
         else:
-            self.ui.createBranch.toolTip = "Select all input before creating branch"
+            self.ui.createBranch.toolTip = "Select all input before creating branch."
             self.ui.createBranch.enabled = False
 
         if len(self.graph_branches.names) != 0:
-            self.ui.clearTree.toolTip = "Clear all tree"
+            self.ui.clearTree.toolTip = "Clear all tree."
             self.ui.clearTree.enabled = True
-            self.ui.saveTree.toolTip = "Save graph tree"
+            self.ui.saveTree.toolTip = "Save graph tree."
             self.ui.saveTree.enabled = True
         else:
-            self.ui.clearTree.toolTip = "Tree is already empty"
+            self.ui.clearTree.toolTip = "Tree is already empty."
             self.ui.clearTree.enabled = False
-            self.ui.saveTree.toolTip = "There is nothing to save"
+            self.ui.saveTree.toolTip = "There is nothing to save."
             self.ui.saveTree.enabled = False
 
     def create_branch(self) -> None:
@@ -346,13 +348,14 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
             progress_bar.hide()
             progress_bar.close()
             self._checkCanApply()
+            self.updateSegmentationButtonState()
 
 
     def paintArteriesWithMarkup(self):
         # Create a progress bar
         progress_bar = slicer.util.createProgressDialog(parent=slicer.util.mainWindow(), autoClose=False,
                                                         labelText="Please wait",
-                                                        windowTitle="Painting arteries with markup...",
+                                                        windowTitle="Painting arteries...",
                                                         value=0)
         progress_bar.setCancelButton(None)
         slicer.app.processEvents()
@@ -378,13 +381,14 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         segmentEditorNode.SetOverwriteMode(slicer.vtkMRMLSegmentEditorNode.OverwriteNone)
         segmentEditorNode.SetMaskMode(slicer.vtkMRMLSegmentationNode.EditAllowedEverywhere)
 
-        for markup_node_idx in range(len(self.graph_branches.centers_line_markups)):
+        effect = segmentEditorWidget.activeEffect()
+        effect.setParameter("BypassMasking", "1")
+        effect.setParameter("Operation", "UNION")
 
-            markupsNode = self.graph_branches.centers_line_markups[markup_node_idx]
-            for point_idx in range(markupsNode.GetNumberOfControlPoints()):
-                point_pos = [0, 0, 0]
-                markupsNode.GetNthControlPointPosition(point_idx, point_pos)
-                radius = self.graph_branches.centers_line_radius[markup_node_idx][point_idx]
+        for center_line_idx in range(len(self.graph_branches.centers_lines)):
+            for point_idx in range(len(self.graph_branches.centers_lines[center_line_idx])):
+                point_pos = self.graph_branches.centers_lines[center_line_idx][point_idx]
+                radius = self.graph_branches.centers_line_radius[center_line_idx][point_idx]
 
                 sphere = vtk.vtkSphereSource()
                 sphere.SetCenter(point_pos)
@@ -393,10 +397,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
 
                 tmp_segment_id = self.segmentationNode.AddSegmentFromClosedSurfaceRepresentation(sphere.GetOutput(),
                                                                                                  "tmp_segment", color)
-                effect = segmentEditorWidget.activeEffect()
-                effect.setParameter("BypassMasking", "1")
                 effect.setParameter("ModifierSegmentID", tmp_segment_id)
-                effect.setParameter("Operation", "UNION")
                 effect.self().onApply()
                 segmentation.RemoveSegment(tmp_segment_id)
 
@@ -408,88 +409,72 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         progress_bar.hide()
         progress_bar.close()
 
-    def paintLungs(self):
-        # Create a progress bar
+    def paintArteriesContours(self):
         progress_bar = slicer.util.createProgressDialog(parent=slicer.util.mainWindow(), autoClose=False,
                                                         labelText="Please wait",
-                                                        windowTitle="Painting lungs...",
+                                                        windowTitle="Painting contour...",
                                                         value=0)
         progress_bar.setCancelButton(None)
         slicer.app.processEvents()
 
-        def GetSlicerITKReadWriteAddress(myNode):
-            myNodeSceneAddress = myNode.GetScene().GetAddressAsString("").replace('Addr=', '')
-            myNodeSceneID = myNode.GetID()
-            myNodeFullITKAddress = 'slicer:' + myNodeSceneAddress + '#' + myNodeSceneID
-            return myNodeFullITKAddress
+        segmentation = self.segmentationNode.GetSegmentation()
 
-        otsu_filter = sitk.OtsuMultipleThresholdsImageFilter()
+        segment = segmentation.GetSegment(self.lungsSegmentId)
+        name = segment.GetName()
+        color = segment.GetColor()
 
-        otsu_filter.SetNumberOfHistogramBins(500)
-        otsu_filter.SetNumberOfThresholds(1)
-        otsu_filter.SetValleyEmphasis(False)
+        segmentation.RemoveSegment(self.lungsSegmentId)
+        self.lungsSegmentId = segmentation.AddEmptySegment("", name, color)
 
-        img = sitk.ReadImage(GetSlicerITKReadWriteAddress(self._parameterNode.inputVolume))
-        labelmap = otsu_filter.Execute(img)
+        binaryLabelmap = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLLabelMapVolumeNode")
+        binaryLabelmap.CreateDefaultDisplayNodes()
 
-        erode_filter = sitk.BinaryDilateImageFilter()
-        erode_filter.SetKernelType(sitk.sitkBall)
-        erode_filter.SetKernelRadius(3)
-        erode_filter.SetForegroundValue(1)
-        erode_filter.SetBackgroundValue(0)
+        segmentIdArg = vtk.vtkStringArray()
+        segmentIdArg.InsertNextValue(self.arteriesSegmentId)
+        slicer.modules.segmentations.logic().ExportSegmentsToLabelmapNode(self.segmentationNode, segmentIdArg, binaryLabelmap, self._parameterNode.inputVolume)
 
-        labelmap = erode_filter.Execute(labelmap)
-        labelmap = sitk.BinaryNot(labelmap)
+        import skimage
 
-        size = labelmap.GetSize()
+        numpy_labelmap_default = slicer.util.arrayFromVolume(binaryLabelmap)
+        numpy_labelmap_ball_6 = skimage.morphology.binary_dilation(numpy_labelmap_default, skimage.morphology.ball(radius=6))
+        numpy_labelmap_ball_6[skimage.morphology.binary_dilation(numpy_labelmap_default, skimage.morphology.ball(radius=4))] = False
 
-        # Get corner points
-        corners = [(0, 0, 0), (0, 0, size[2] - 1), (0, size[1] - 1, 0), (0, size[1] - 1, size[2] - 1),
-                   (size[0] - 1, 0, 0), (size[0] - 1, 0, size[2] - 1), (size[0] - 1, size[1] - 1, 0),
-                   (size[0] - 1, size[1] - 1, size[2] - 1)]
+        slicer.util.updateVolumeFromArray(binaryLabelmap, numpy_labelmap_ball_6.astype(np.uint8))
 
-        cc_filter = sitk.ConnectedComponentImageFilter()
-        labelmap = cc_filter.Execute(labelmap)
+        segmentIdArg = vtk.vtkStringArray()
+        segmentIdArg.InsertNextValue(self.lungsSegmentId)
+        slicer.modules.segmentations.logic().ImportLabelmapToSegmentationNode(binaryLabelmap, self.segmentationNode, segmentIdArg)
 
-        # 0 is the background so we do not care about removing it
-        connected_components_to_remove = {labelmap[corner] for corner in corners if labelmap[corner] != 0}
-
-        for cc_to_remove in connected_components_to_remove:
-            to_remove = sitk.BinaryThreshold(labelmap, cc_to_remove, cc_to_remove, cc_to_remove, 0)
-            to_remove = sitk.Cast(to_remove, labelmap.GetPixelID())
-            labelmap = sitk.SubtractImageFilter().Execute(labelmap, to_remove)
-
-        labelmap = cc_filter.Execute(labelmap)
-        label_stats = sitk.LabelShapeStatisticsImageFilter()
-        label_stats.Execute(labelmap)
-        cc_sizes = [label_stats.GetNumberOfPixels(label) for label in range(1, label_stats.GetNumberOfLabels() + 1)]
-        labels_of_largest_cc = (np.argsort(cc_sizes)[::-1][:2] + 1).astype(float)
-        labelmap = sitk.AddImageFilter().Execute(sitk.BinaryThreshold(labelmap, labels_of_largest_cc[0], labels_of_largest_cc[0], 1, 0),
-                                       sitk.BinaryThreshold(labelmap, labels_of_largest_cc[1], labels_of_largest_cc[1], 1, 0))
-
-
-        labelMapNode = slicer.mrmlScene.AddNewNodeByClass('vtkMRMLLabelMapVolumeNode')
-        labelMapNode.CreateDefaultDisplayNodes()
-
-        sitk.WriteImage(labelmap, GetSlicerITKReadWriteAddress(labelMapNode))
-
-        lungSegmentId = vtk.vtkStringArray()
-        lungSegmentId.InsertNextValue(self.lungsSegmentId)
-        slicer.modules.segmentations.logic().ImportLabelmapToSegmentationNode(labelMapNode, self.segmentationNode, lungSegmentId)
-        slicer.mrmlScene.RemoveNode(labelMapNode)
-
+        slicer.mrmlScene.RemoveNode(binaryLabelmap)
 
         # Hide and close progress bar
         progress_bar.hide()
         progress_bar.close()
 
+    def updateSegmentationButtonState(self, *args):
+        paintButton : qt.QPushButton = self.ui.paintButton
+        paintButton.enabled = len(self.graph_branches.centers_line_markups) != 0 and self._parameterNode.inputVolume
+
+        if self.segmentationNode is None or self.segmentationNode.GetScene() is None:
+            paintButton.text = "Create segmentation from branches"
+            self.segmentationNode = None
+            if self.nodeDeletionObserverTag is not None:
+                slicer.mrmlScene.RemoveObserver(self.nodeDeletionObserverTag)
+                self.nodeDeletionObserverTag = None
+        else:
+            paintButton.text = "Update segmentation from branches"
+
+
     def onStartSegmentationButton(self) -> None:
         with slicer.util.tryWithErrorDisplay("Failed to compute segmentation.", waitCursor=True):
             if self.segmentationNode is None or self.segmentationNode.GetScene() is None:
                 self.segmentationNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLSegmentationNode")
+                self.nodeDeletionObserverTag = slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.NodeAboutToBeRemovedEvent, self.updateSegmentationButtonState)
+                self.segmentationNode.SetReferenceImageGeometryParameterFromVolumeNode(self._parameterNode.inputVolume)
+
                 self.segmentationNode.SetName("Lung Segmentation")
                 self.segmentationNode.CreateDefaultDisplayNodes()
-                self.lungsSegmentId = self.segmentationNode.GetSegmentation().AddEmptySegment("", "Lungs",
+                self.lungsSegmentId = self.segmentationNode.GetSegmentation().AddEmptySegment("", "Contours",
                                                                                               [128. / 255., 174. / 255,
                                                                                                128. / 255.])
                 self.arteriesSegmentId = self.segmentationNode.GetSegmentation().AddEmptySegment("", "Arteries",
@@ -502,31 +487,36 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
                 segmentationDisplayNode.SetSegmentOpacity3D(self.lungsSegmentId, 0.1)
                 segmentationDisplayNode.SetSegmentOpacity3D(self.otherSegmentId, 0.1)
 
-            if self._parameterNode.inputVolume:
-                self.segmentationNode.SetReferenceImageGeometryParameterFromVolumeNode(self._parameterNode.inputVolume)
+            # We do pause the tracking of segmentation deletion
+            slicer.mrmlScene.RemoveObserver(self.nodeDeletionObserverTag)
+            self.nodeDeletionObserverTag = None
 
-            if self.graph_branches and len(self.graph_branches.centers_line_markups):
+            # Paint the artery segment
+            self.paintArteriesWithMarkup()
+            # Paint the arteries Contours
+            self.paintArteriesContours()
 
-                # Paint the artery segment
-                self.paintArteriesWithMarkup()
-                # Paint the lungs segment
-                self.paintLungs()
+            # Make the segmentation visible
+            if not self.segmentationNode.GetSegmentation().ContainsRepresentation("Closed surface"):
+                self.segmentationNode.CreateClosedSurfaceRepresentation()
+            self.segmentationNode.GetDisplayNode().SetVisibility3D(True)
 
-                # Make the segmentation visible
-                if not self.segmentationNode.GetSegmentation().ContainsRepresentation("Closed surface"):
-                    self.segmentationNode.CreateClosedSurfaceRepresentation()
-                self.segmentationNode.GetDisplayNode().SetVisibility3D(True)
+            # Hide markup nodes
+            for markup in [self.graph_branches.centers_line_markups, self.graph_branches.contour_points_markups]:
+                for branch in markup:
+                    branch.GetDisplayNode().SetVisibility(False)
 
-                # Hide markup nodes
-                for markup in [self.graph_branches.centers_line_markups, self.graph_branches.contour_points_markups]:
-                    for branch in markup:
-                        branch.GetDisplayNode().SetVisibility(False)
+            for icon in self.graph_branches.tree_widget._branchDict.values():
+                icon.setIcon(TreeColumnRole.VISIBILITY_CENTER, Icons.visibleOff)
+                icon.setIcon(TreeColumnRole.VISIBILITY_CONTOUR, Icons.visibleOff)
+            self._parameterNode.startingPoint.GetDisplayNode().SetVisibility(False)
+            self._parameterNode.directionPoint.GetDisplayNode().SetVisibility(False)
 
-                for icon in self.graph_branches.tree_widget._branchDict.values():
-                    icon.setIcon(TreeColumnRole.VISIBILITY_CENTER, Icons.visibleOff)
-                    icon.setIcon(TreeColumnRole.VISIBILITY_CONTOUR, Icons.visibleOff)
-                self._parameterNode.startingPoint.GetDisplayNode().SetVisibility(False)
-                self._parameterNode.directionPoint.GetDisplayNode().SetVisibility(False)
+            self.updateSegmentationButtonState()
+
+            # We track segmentation deletion
+            self.nodeDeletionObserverTag = slicer.mrmlScene.AddObserver(
+                slicer.vtkMRMLScene.NodeAboutToBeRemovedEvent, self.updateSegmentationButtonState)
 
 #
 # pulmonary_arteries_segmentor_moduleLogic

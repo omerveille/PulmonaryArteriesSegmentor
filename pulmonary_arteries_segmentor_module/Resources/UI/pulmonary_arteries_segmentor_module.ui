@@ -43,7 +43,7 @@
           <item row="0" column="1">
            <widget class="qMRMLNodeComboBox" name="inputSelector">
             <property name="toolTip">
-             <string>Pick the input to the algorithm.</string>
+             <string>Pick the input volume of the algorithm.</string>
             </property>
             <property name="nodeTypes">
              <stringlist notr="true">
@@ -86,7 +86,7 @@
           <item row="0" column="1">
            <widget class="qMRMLNodeComboBox" name="startingPointSelector">
             <property name="toolTip">
-             <string/>
+             <string>Select a starting point for the first cylinder.</string>
             </property>
             <property name="nodeTypes">
              <stringlist notr="true">
@@ -129,7 +129,7 @@
           <item row="1" column="1">
            <widget class="qMRMLNodeComboBox" name="directionPointSelector">
             <property name="toolTip">
-             <string/>
+             <string>Select a direction point for the first cylinder.</string>
             </property>
             <property name="nodeTypes">
              <stringlist notr="true">
@@ -171,6 +171,9 @@
           </item>
           <item row="2" column="1">
            <widget class="ctkSliderWidget" name="inlierPointsSliderWidget">
+            <property name="toolTip">
+             <string>Select a percentage of inlier points to consider a cylinder valid.</string>
+            </property>
             <property name="maximum">
              <double>100.000000000000000</double>
             </property>
@@ -191,6 +194,9 @@
           </item>
           <item row="3" column="1">
            <widget class="ctkSliderWidget" name="thresholdSliderWidget">
+            <property name="toolTip">
+             <string>Select the threshold for which a point is considered inlier. X % of previous cylinder radius.</string>
+            </property>
             <property name="maximum">
              <double>100.000000000000000</double>
             </property>
@@ -211,6 +217,9 @@
           </item>
           <item row="4" column="1">
            <widget class="QDoubleSpinBox" name="startingRadiusDoubleSpinBox">
+            <property name="toolTip">
+             <string>Select the radius of the starting cylinder radius in millimeter.</string>
+            </property>
             <property name="maximum">
              <double>100.000000000000000</double>
             </property>
@@ -231,7 +240,7 @@
           <bool>true</bool>
          </property>
          <property name="toolTip">
-          <string>Run the algorithm.</string>
+          <string>Create the root branch or add a new branch.</string>
          </property>
          <property name="text">
           <string>Create root</string>
@@ -240,6 +249,9 @@
        </item>
        <item>
         <widget class="QPushButton" name="saveTree">
+         <property name="toolTip">
+          <string>Save the network X graph of the segmentation as JSON and pickle.</string>
+         </property>
          <property name="text">
           <string>Save tree</string>
          </property>
@@ -247,6 +259,9 @@
        </item>
        <item>
         <widget class="QPushButton" name="clearTree">
+         <property name="toolTip">
+          <string>Clear the branch architecture.</string>
+         </property>
          <property name="text">
           <string>Clear tree</string>
          </property>
@@ -274,14 +289,20 @@
       <layout class="QVBoxLayout" name="verticalLayout_2">
        <item alignment="Qt::AlignHCenter">
         <widget class="QPushButton" name="paintButton">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
          <property name="maximumSize">
           <size>
            <width>16777215</width>
            <height>16777215</height>
           </size>
          </property>
+         <property name="toolTip">
+          <string>Create or update a segmentation node. It needs input volume and a branch.</string>
+         </property>
          <property name="text">
-          <string>Paint segmentation</string>
+          <string>Create segmentation from branches</string>
          </property>
         </widget>
        </item>
