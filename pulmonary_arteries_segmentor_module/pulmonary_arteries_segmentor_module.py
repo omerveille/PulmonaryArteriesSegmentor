@@ -316,23 +316,23 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
             self.ui.createBranch.enabled = True
             if len(self.graph_branches.names) == 0:
                 self.ui.createBranch.text = "Create root"
-                self.ui.createBranch.toolTip = "Create root"
+                self.ui.createBranch.toolTip = "Create root."
             else:
                 self.ui.createBranch.text = "Create new branch"
-                self.ui.createBranch.toolTip = "Create new branch"
+                self.ui.createBranch.toolTip = "Create new branch."
         else:
-            self.ui.createBranch.toolTip = "Select all input before creating branch"
+            self.ui.createBranch.toolTip = "Select all input before creating branch."
             self.ui.createBranch.enabled = False
 
         if len(self.graph_branches.names) != 0:
-            self.ui.clearTree.toolTip = "Clear all tree"
+            self.ui.clearTree.toolTip = "Clear all tree."
             self.ui.clearTree.enabled = True
-            self.ui.saveTree.toolTip = "Save graph tree"
+            self.ui.saveTree.toolTip = "Save graph tree."
             self.ui.saveTree.enabled = True
         else:
-            self.ui.clearTree.toolTip = "Tree is already empty"
+            self.ui.clearTree.toolTip = "Tree is already empty."
             self.ui.clearTree.enabled = False
-            self.ui.saveTree.toolTip = "There is nothing to save"
+            self.ui.saveTree.toolTip = "There is nothing to save."
             self.ui.saveTree.enabled = False
 
     def create_branch(self) -> None:
