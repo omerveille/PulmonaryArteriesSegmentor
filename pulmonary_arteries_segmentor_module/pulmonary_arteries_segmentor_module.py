@@ -5,7 +5,6 @@ from typing import Annotated, Optional
 
 import numpy as np
 import slicer
-import SimpleITK as sitk
 import vtk
 
 from slicer.ScriptedLoadableModule import (ScriptedLoadableModuleWidget, ScriptedLoadableModuleLogic,
@@ -352,7 +351,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         # Create a progress bar
         progress_bar = slicer.util.createProgressDialog(parent=slicer.util.mainWindow(), autoClose=False,
                                                         labelText="Please wait",
-                                                        windowTitle="Painting arteries with markup...",
+                                                        windowTitle="Painting arteries...",
                                                         value=0)
         progress_bar.setCancelButton(None)
         slicer.app.processEvents()
@@ -409,7 +408,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
     def paintArteriesContours(self):
         progress_bar = slicer.util.createProgressDialog(parent=slicer.util.mainWindow(), autoClose=False,
                                                         labelText="Please wait",
-                                                        windowTitle="Painting arteries contour...",
+                                                        windowTitle="Painting contour...",
                                                         value=0)
         segmentation = self.segmentationNode.GetSegmentation()
 
@@ -419,149 +418,27 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
 
         segmentation.RemoveSegment(self.lungsSegmentId)
         self.lungsSegmentId = segmentation.AddEmptySegment("", name, color)
-        lungsSegmentToSubStractId = segmentation.AddEmptySegment("", name + "_to_substract", color)
-        segment = segmentation.GetSegment(self.lungsSegmentId)
 
-        segmentEditorWidget = self.ui.SegmentEditorWidget
-        segmentEditorNode = self.segmentEditorNode
+        binaryLabelmap = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLLabelMapVolumeNode")
+        binaryLabelmap.CreateDefaultDisplayNodes()
 
-        segmentEditorWidget.setSegmentationNode(self.segmentationNode)
+        segmentIdArg = vtk.vtkStringArray()
+        segmentIdArg.InsertNextValue(self.arteriesSegmentId)
+        slicer.modules.segmentations.logic().ExportSegmentsToLabelmapNode(self.segmentationNode, segmentIdArg, binaryLabelmap, self._parameterNode.inputVolume)
 
-        segmentEditorWidget.setActiveEffectByName("Logical operators")
+        import skimage
 
-        segmentEditorNode.SetOverwriteMode(slicer.vtkMRMLSegmentEditorNode.OverwriteNone)
-        segmentEditorNode.SetMaskMode(slicer.vtkMRMLSegmentationNode.EditAllowedEverywhere)
+        numpy_labelmap_default = slicer.util.arrayFromVolume(binaryLabelmap)
+        numpy_labelmap_ball_6 = skimage.morphology.binary_dilation(numpy_labelmap_default, skimage.morphology.ball(radius=6))
+        numpy_labelmap_ball_6[skimage.morphology.binary_dilation(numpy_labelmap_default, skimage.morphology.ball(radius=4))] = False
 
-        effect = segmentEditorWidget.activeEffect()
-        effect.setParameter("BypassMasking", "1")
-        effect.setParameter("Operation", "UNION")
+        slicer.util.updateVolumeFromArray(binaryLabelmap, numpy_labelmap_ball_6.astype(np.uint8))
 
-        vtk_points_set = vtk.vtkPointSet()
-        delaunay = vtk.vtkDelaunay3D()
-        geometry_filter = vtk.vtkGeometryFilter()
-        geometry_filter.SetInputConnection(delaunay.GetOutputPort())
+        segmentIdArg = vtk.vtkStringArray()
+        segmentIdArg.InsertNextValue(self.lungsSegmentId)
+        slicer.modules.segmentations.logic().ImportLabelmapToSegmentationNode(binaryLabelmap, self.segmentationNode, segmentIdArg)
 
-        for center_line_idx in range(len(self.graph_branches.centers_lines)):
-            centerline_points = self.graph_branches.centers_lines[center_line_idx]
-
-            contour_points_in = self.graph_branches.contours_points[center_line_idx]
-
-            contour_points_out = [((contour_points_in[point_idx] - centerline_points[point_idx]) * 0.5) + contour_points_in[point_idx]
-                                           for point_idx in range(len(contour_points_in))]
-
-            contour_points_in = [
-                ((contour_points_in[point_idx] - centerline_points[point_idx]) * - 0.5) + contour_points_in[point_idx]
-                for point_idx in range(len(contour_points_in))]
-
-            contour_points_in = [point for contours in contour_points_in for point in contours]
-            contour_points_out = [point for contours in contour_points_out for point in contours]
-
-            vtk_points = vtk.vtkPoints()
-            for point in contour_points_in:
-                vtk_points.InsertNextPoint(*point)
-
-            vtk_points_set.SetPoints(vtk_points)
-            delaunay.SetInputData(vtk_points_set)
-            geometry_filter.Update()
-
-            segmentEditorNode.SetSelectedSegmentID(lungsSegmentToSubStractId)
-            tmp_segment_id = self.segmentationNode.AddSegmentFromClosedSurfaceRepresentation(geometry_filter.GetOutput(),
-                                                                                             "tmp_segment", color)
-            effect.setParameter("ModifierSegmentID", tmp_segment_id)
-            effect.self().onApply()
-            segmentation.RemoveSegment(tmp_segment_id)
-
-
-            vtk_points = vtk.vtkPoints()
-            for point in contour_points_out:
-                vtk_points.InsertNextPoint(*point)
-
-            vtk_points_set.SetPoints(vtk_points)
-            delaunay.SetInputData(vtk_points_set)
-            geometry_filter.Update()
-
-            segmentEditorNode.SetSelectedSegmentID(self.lungsSegmentId)
-            tmp_segment_id = self.segmentationNode.AddSegmentFromClosedSurfaceRepresentation(
-                geometry_filter.GetOutput(),
-                "tmp_segment", color)
-            effect.setParameter("ModifierSegmentID", tmp_segment_id)
-            effect.self().onApply()
-            segmentation.RemoveSegment(tmp_segment_id)
-
-        # Hide and close progress bar
-        progress_bar.hide()
-        progress_bar.close()
-
-    def paintLungs(self):
-        # Create a progress bar
-        progress_bar = slicer.util.createProgressDialog(parent=slicer.util.mainWindow(), autoClose=False,
-                                                        labelText="Please wait",
-                                                        windowTitle="Painting lungs...",
-                                                        value=0)
-        progress_bar.setCancelButton(None)
-        slicer.app.processEvents()
-
-        def GetSlicerITKReadWriteAddress(myNode):
-            myNodeSceneAddress = myNode.GetScene().GetAddressAsString("").replace('Addr=', '')
-            myNodeSceneID = myNode.GetID()
-            myNodeFullITKAddress = 'slicer:' + myNodeSceneAddress + '#' + myNodeSceneID
-            return myNodeFullITKAddress
-
-        otsu_filter = sitk.OtsuMultipleThresholdsImageFilter()
-
-        otsu_filter.SetNumberOfHistogramBins(500)
-        otsu_filter.SetNumberOfThresholds(1)
-        otsu_filter.SetValleyEmphasis(False)
-
-        img = sitk.ReadImage(GetSlicerITKReadWriteAddress(self._parameterNode.inputVolume))
-        labelmap = otsu_filter.Execute(img)
-
-        erode_filter = sitk.BinaryDilateImageFilter()
-        erode_filter.SetKernelType(sitk.sitkBall)
-        erode_filter.SetKernelRadius(3)
-        erode_filter.SetForegroundValue(1)
-        erode_filter.SetBackgroundValue(0)
-
-        labelmap = erode_filter.Execute(labelmap)
-        labelmap = sitk.BinaryNot(labelmap)
-
-        size = labelmap.GetSize()
-
-        # Get corner points
-        corners = [(0, 0, 0), (0, 0, size[2] - 1), (0, size[1] - 1, 0), (0, size[1] - 1, size[2] - 1),
-                   (size[0] - 1, 0, 0), (size[0] - 1, 0, size[2] - 1), (size[0] - 1, size[1] - 1, 0),
-                   (size[0] - 1, size[1] - 1, size[2] - 1)]
-
-        cc_filter = sitk.ConnectedComponentImageFilter()
-        labelmap = cc_filter.Execute(labelmap)
-
-        # 0 is the background so we do not care about removing it
-        connected_components_to_remove = {labelmap[corner] for corner in corners if labelmap[corner] != 0}
-
-        for cc_to_remove in connected_components_to_remove:
-            to_remove = sitk.BinaryThreshold(labelmap, cc_to_remove, cc_to_remove, cc_to_remove, 0)
-            to_remove = sitk.Cast(to_remove, labelmap.GetPixelID())
-            labelmap = sitk.SubtractImageFilter().Execute(labelmap, to_remove)
-
-        labelmap = cc_filter.Execute(labelmap)
-        label_stats = sitk.LabelShapeStatisticsImageFilter()
-        label_stats.Execute(labelmap)
-        cc_sizes = [label_stats.GetNumberOfPixels(label) for label in range(1, label_stats.GetNumberOfLabels() + 1)]
-        labels_of_largest_cc = (np.argsort(cc_sizes)[::-1][:2] + 1).astype(float)
-        labelmap = sitk.AddImageFilter().Execute(sitk.BinaryThreshold(labelmap, labels_of_largest_cc[0], labels_of_largest_cc[0], 1, 0),
-                                       sitk.BinaryThreshold(labelmap, labels_of_largest_cc[1], labels_of_largest_cc[1], 1, 0))
-
-
-        labelMapNode = slicer.mrmlScene.AddNewNodeByClass('vtkMRMLLabelMapVolumeNode')
-        labelMapNode.CreateDefaultDisplayNodes()
-
-        sitk.WriteImage(labelmap, GetSlicerITKReadWriteAddress(labelMapNode))
-
-        lungSegmentId = vtk.vtkStringArray()
-        lungSegmentId.InsertNextValue(self.lungsSegmentId)
-        slicer.modules.segmentations.logic().ImportLabelmapToSegmentationNode(labelMapNode, self.segmentationNode, lungSegmentId)
-        slicer.mrmlScene.RemoveNode(labelMapNode)
-
+        slicer.mrmlScene.RemoveNode(binaryLabelmap)
 
         # Hide and close progress bar
         progress_bar.hide()
@@ -573,7 +450,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
                 self.segmentationNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLSegmentationNode")
                 self.segmentationNode.SetName("Lung Segmentation")
                 self.segmentationNode.CreateDefaultDisplayNodes()
-                self.lungsSegmentId = self.segmentationNode.GetSegmentation().AddEmptySegment("", "Lungs",
+                self.lungsSegmentId = self.segmentationNode.GetSegmentation().AddEmptySegment("", "Contours",
                                                                                               [128. / 255., 174. / 255,
                                                                                                128. / 255.])
                 self.arteriesSegmentId = self.segmentationNode.GetSegmentation().AddEmptySegment("", "Arteries",
