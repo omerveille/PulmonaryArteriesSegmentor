@@ -378,13 +378,14 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         segmentEditorNode.SetOverwriteMode(slicer.vtkMRMLSegmentEditorNode.OverwriteNone)
         segmentEditorNode.SetMaskMode(slicer.vtkMRMLSegmentationNode.EditAllowedEverywhere)
 
-        for markup_node_idx in range(len(self.graph_branches.centers_line_markups)):
+        effect = segmentEditorWidget.activeEffect()
+        effect.setParameter("BypassMasking", "1")
+        effect.setParameter("Operation", "UNION")
 
-            markupsNode = self.graph_branches.centers_line_markups[markup_node_idx]
-            for point_idx in range(markupsNode.GetNumberOfControlPoints()):
-                point_pos = [0, 0, 0]
-                markupsNode.GetNthControlPointPosition(point_idx, point_pos)
-                radius = self.graph_branches.centers_line_radius[markup_node_idx][point_idx]
+        for center_line_idx in range(len(self.graph_branches.centers_lines)):
+            for point_idx in range(len(self.graph_branches.centers_lines[center_line_idx])):
+                point_pos = self.graph_branches.centers_lines[center_line_idx][point_idx]
+                radius = self.graph_branches.centers_line_radius[center_line_idx][point_idx]
 
                 sphere = vtk.vtkSphereSource()
                 sphere.SetCenter(point_pos)
@@ -393,16 +394,99 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
 
                 tmp_segment_id = self.segmentationNode.AddSegmentFromClosedSurfaceRepresentation(sphere.GetOutput(),
                                                                                                  "tmp_segment", color)
-                effect = segmentEditorWidget.activeEffect()
-                effect.setParameter("BypassMasking", "1")
                 effect.setParameter("ModifierSegmentID", tmp_segment_id)
-                effect.setParameter("Operation", "UNION")
                 effect.self().onApply()
                 segmentation.RemoveSegment(tmp_segment_id)
 
         slicer.modules.segmentations.logic().SetSegmentStatus(segment, 0)
         segmentEditorWidget.setActiveEffectByName("No editing")
         segmentEditorNode.SetSelectedSegmentID(self.otherSegmentId)
+
+        # Hide and close progress bar
+        progress_bar.hide()
+        progress_bar.close()
+
+    def paintArteriesContours(self):
+        progress_bar = slicer.util.createProgressDialog(parent=slicer.util.mainWindow(), autoClose=False,
+                                                        labelText="Please wait",
+                                                        windowTitle="Painting arteries contour...",
+                                                        value=0)
+        segmentation = self.segmentationNode.GetSegmentation()
+
+        segment = segmentation.GetSegment(self.lungsSegmentId)
+        name = segment.GetName()
+        color = segment.GetColor()
+
+        segmentation.RemoveSegment(self.lungsSegmentId)
+        self.lungsSegmentId = segmentation.AddEmptySegment("", name, color)
+        lungsSegmentToSubStractId = segmentation.AddEmptySegment("", name + "_to_substract", color)
+        segment = segmentation.GetSegment(self.lungsSegmentId)
+
+        segmentEditorWidget = self.ui.SegmentEditorWidget
+        segmentEditorNode = self.segmentEditorNode
+
+        segmentEditorWidget.setSegmentationNode(self.segmentationNode)
+
+        segmentEditorWidget.setActiveEffectByName("Logical operators")
+
+        segmentEditorNode.SetOverwriteMode(slicer.vtkMRMLSegmentEditorNode.OverwriteNone)
+        segmentEditorNode.SetMaskMode(slicer.vtkMRMLSegmentationNode.EditAllowedEverywhere)
+
+        effect = segmentEditorWidget.activeEffect()
+        effect.setParameter("BypassMasking", "1")
+        effect.setParameter("Operation", "UNION")
+
+        vtk_points_set = vtk.vtkPointSet()
+        delaunay = vtk.vtkDelaunay3D()
+        geometry_filter = vtk.vtkGeometryFilter()
+        geometry_filter.SetInputConnection(delaunay.GetOutputPort())
+
+        for center_line_idx in range(len(self.graph_branches.centers_lines)):
+            centerline_points = self.graph_branches.centers_lines[center_line_idx]
+
+            contour_points_in = self.graph_branches.contours_points[center_line_idx]
+
+            contour_points_out = [((contour_points_in[point_idx] - centerline_points[point_idx]) * 0.5) + contour_points_in[point_idx]
+                                           for point_idx in range(len(contour_points_in))]
+
+            contour_points_in = [
+                ((contour_points_in[point_idx] - centerline_points[point_idx]) * - 0.5) + contour_points_in[point_idx]
+                for point_idx in range(len(contour_points_in))]
+
+            contour_points_in = [point for contours in contour_points_in for point in contours]
+            contour_points_out = [point for contours in contour_points_out for point in contours]
+
+            vtk_points = vtk.vtkPoints()
+            for point in contour_points_in:
+                vtk_points.InsertNextPoint(*point)
+
+            vtk_points_set.SetPoints(vtk_points)
+            delaunay.SetInputData(vtk_points_set)
+            geometry_filter.Update()
+
+            segmentEditorNode.SetSelectedSegmentID(lungsSegmentToSubStractId)
+            tmp_segment_id = self.segmentationNode.AddSegmentFromClosedSurfaceRepresentation(geometry_filter.GetOutput(),
+                                                                                             "tmp_segment", color)
+            effect.setParameter("ModifierSegmentID", tmp_segment_id)
+            effect.self().onApply()
+            segmentation.RemoveSegment(tmp_segment_id)
+
+
+            vtk_points = vtk.vtkPoints()
+            for point in contour_points_out:
+                vtk_points.InsertNextPoint(*point)
+
+            vtk_points_set.SetPoints(vtk_points)
+            delaunay.SetInputData(vtk_points_set)
+            geometry_filter.Update()
+
+            segmentEditorNode.SetSelectedSegmentID(self.lungsSegmentId)
+            tmp_segment_id = self.segmentationNode.AddSegmentFromClosedSurfaceRepresentation(
+                geometry_filter.GetOutput(),
+                "tmp_segment", color)
+            effect.setParameter("ModifierSegmentID", tmp_segment_id)
+            effect.self().onApply()
+            segmentation.RemoveSegment(tmp_segment_id)
 
         # Hide and close progress bar
         progress_bar.hide()
@@ -510,7 +594,9 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
                 # Paint the artery segment
                 self.paintArteriesWithMarkup()
                 # Paint the lungs segment
-                self.paintLungs()
+                # self.paintLungs()
+
+                self.paintArteriesContours()
 
                 # Make the segmentation visible
                 if not self.segmentationNode.GetSegmentation().ContainsRepresentation("Closed surface"):
