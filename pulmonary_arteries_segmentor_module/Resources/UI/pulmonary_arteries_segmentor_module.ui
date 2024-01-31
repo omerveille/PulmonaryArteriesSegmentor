@@ -274,14 +274,20 @@
       <layout class="QVBoxLayout" name="verticalLayout_2">
        <item alignment="Qt::AlignHCenter">
         <widget class="QPushButton" name="paintButton">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
          <property name="maximumSize">
           <size>
            <width>16777215</width>
            <height>16777215</height>
           </size>
          </property>
+         <property name="toolTip">
+          <string>Create or update a segmentation node. It needs input volume and a branch.</string>
+         </property>
          <property name="text">
-          <string>Paint segmentation</string>
+          <string>Create segmentation from branches</string>
          </property>
         </widget>
        </item>
