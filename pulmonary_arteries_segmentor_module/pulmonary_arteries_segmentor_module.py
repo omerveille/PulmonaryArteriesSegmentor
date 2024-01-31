@@ -556,7 +556,7 @@ class pulmonary_arteries_segmentor_moduleLogic(ScriptedLoadableModuleLogic):
         params[1].GetNthControlPointPosition(0, starting_point)
 
         direction_point = np.array([0, 0, 0])
-        params[2].GetNthControlPointPosition(0, direction_point)
+        params[2].GetNthControlPointPosition(params[2].GetNumberOfControlPoints()-1, direction_point)
 
         graph_branches = run_ransac(vol, starting_point, direction_point, params[5],
                                     params[3], params[4], graph_branches, isNewBranch)
