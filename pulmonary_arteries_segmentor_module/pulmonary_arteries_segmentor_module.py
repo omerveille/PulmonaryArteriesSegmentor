@@ -403,7 +403,6 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
 
         slicer.modules.segmentations.logic().SetSegmentStatus(segment, 0)
         segmentEditorWidget.setActiveEffectByName("No editing")
-        segmentEditorNode.SetSelectedSegmentID(self.otherSegmentId)
 
         # Hide and close progress bar
         progress_bar.hide()
@@ -412,19 +411,21 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
     def paintArteriesContours(self):
         progress_bar = slicer.util.createProgressDialog(parent=slicer.util.mainWindow(), autoClose=False,
                                                         labelText="Please wait",
-                                                        windowTitle="Painting contour...",
+                                                        windowTitle="Painting contours...",
                                                         value=0)
         progress_bar.setCancelButton(None)
         slicer.app.processEvents()
 
         segmentation = self.segmentationNode.GetSegmentation()
 
-        segment = segmentation.GetSegment(self.lungsSegmentId)
+        segment = segmentation.GetSegment(self.contoursSegmentId)
         name = segment.GetName()
         color = segment.GetColor()
 
-        segmentation.RemoveSegment(self.lungsSegmentId)
-        self.lungsSegmentId = segmentation.AddEmptySegment("", name, color)
+        segmentation.RemoveSegment(self.contoursSegmentId)
+        self.contoursSegmentId = segmentation.AddEmptySegment("", name, color)
+        segmentationDisplayNode = self.segmentationNode.GetDisplayNode()
+        segmentationDisplayNode.SetSegmentOpacity3D(self.contoursSegmentId, 0.1)
 
         binaryLabelmap = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLLabelMapVolumeNode")
         binaryLabelmap.CreateDefaultDisplayNodes()
@@ -442,7 +443,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         slicer.util.updateVolumeFromArray(binaryLabelmap, numpy_labelmap_ball_6.astype(np.uint8))
 
         segmentIdArg = vtk.vtkStringArray()
-        segmentIdArg.InsertNextValue(self.lungsSegmentId)
+        segmentIdArg.InsertNextValue(self.contoursSegmentId)
         slicer.modules.segmentations.logic().ImportLabelmapToSegmentationNode(binaryLabelmap, self.segmentationNode, segmentIdArg)
 
         slicer.mrmlScene.RemoveNode(binaryLabelmap)
@@ -474,18 +475,12 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
 
                 self.segmentationNode.SetName("Lung Segmentation")
                 self.segmentationNode.CreateDefaultDisplayNodes()
-                self.lungsSegmentId = self.segmentationNode.GetSegmentation().AddEmptySegment("", "Contours",
-                                                                                              [128. / 255., 174. / 255,
+                self.contoursSegmentId = self.segmentationNode.GetSegmentation().AddEmptySegment("", "Contours",
+                                                                                                 [128. / 255., 174. / 255,
                                                                                                128. / 255.])
                 self.arteriesSegmentId = self.segmentationNode.GetSegmentation().AddEmptySegment("", "Arteries",
                                                                                                  [216. / 255., 101. / 255,
                                                                                                   79. / 255.])
-                self.otherSegmentId = self.segmentationNode.GetSegmentation().AddEmptySegment("", "Other",
-                                                                                              [230. / 255., 220. / 255,
-                                                                                               70. / 255.])
-                segmentationDisplayNode = self.segmentationNode.GetDisplayNode()
-                segmentationDisplayNode.SetSegmentOpacity3D(self.lungsSegmentId, 0.1)
-                segmentationDisplayNode.SetSegmentOpacity3D(self.otherSegmentId, 0.1)
 
             # We do pause the tracking of segmentation deletion
             slicer.mrmlScene.RemoveObserver(self.nodeDeletionObserverTag)
