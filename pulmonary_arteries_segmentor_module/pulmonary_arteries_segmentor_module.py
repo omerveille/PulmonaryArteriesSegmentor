@@ -345,6 +345,15 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
             self.old_graph_branches = self.graph_branches
             self.graph_branches = self.logic.processBranch(self._getParametersBegin(), self.graph_branches,
                                                            self.ui.createBranch.text == "Create new branch")
+
+            # Recenter the 3D view
+            layoutManager = slicer.app.layoutManager()
+            threeDWidget = layoutManager.threeDWidget(0)
+            threeDView = threeDWidget.threeDView()
+            threeDView.rotateToViewAxis(3)
+            threeDView.resetFocalPoint()
+            threeDView.resetCamera()
+
             progress_bar.hide()
             progress_bar.close()
             self._checkCanApply()
@@ -434,7 +443,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
 
         import skimage
 
-        numpy_labelmap_default = np.array(slicer.util.arrayFromVolume(binaryLabelmap) > 0, dtype=np.uint8)
+        numpy_labelmap_default = np.array(slicer.util.arrayFromVolume(binaryLabelmap) > 0, dtype=np.bool_)
         numpy_labelmap_ball_6 = skimage.morphology.binary_dilation(numpy_labelmap_default,
                                                                    skimage.morphology.ball(radius=6))
         numpy_labelmap_ball_6[
