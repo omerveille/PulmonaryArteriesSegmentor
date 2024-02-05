@@ -4,10 +4,10 @@ import sys
 from typing import Annotated, Optional
 
 import numpy as np
+import qt
 import slicer
 import vtk
-import qt
-
+from slicer import (vtkMRMLScalarVolumeNode, vtkMRMLMarkupsFiducialNode)
 from slicer.ScriptedLoadableModule import (ScriptedLoadableModuleWidget, ScriptedLoadableModuleLogic,
                                            ScriptedLoadableModule, ScriptedLoadableModuleTest)
 from slicer.parameterNodeWrapper import (
@@ -16,7 +16,6 @@ from slicer.parameterNodeWrapper import (
 )
 from slicer.util import VTKObservationMixin
 from vtkSlicerMarkupsModuleMRMLPython import vtkMRMLMarkupsNode
-from slicer import (vtkMRMLScalarVolumeNode, vtkMRMLMarkupsFiducialNode)
 
 try:
     to_reload = [key for key in sys.modules.keys() if "ransac_slicer." in key]
@@ -29,6 +28,7 @@ from ransac_slicer.ransac import run_ransac
 from ransac_slicer.graph_branches import GraphBranches
 from ransac_slicer.branch_tree import BranchTree, TreeColumnRole, Icons
 from ransac_slicer.volume import volume
+from ransac_slicer.color_palettes import colors_float
 
 
 #
@@ -206,7 +206,8 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
 
         # Buttons
         self.ui.createBranch.connect('clicked(bool)', self.create_branch)
-        self.ui.clearTree.connect('clicked(bool)', lambda: (self.graph_branches.clear_all(), self.updateSegmentationButtonState()))
+        self.ui.clearTree.connect('clicked(bool)',
+                                  lambda: (self.graph_branches.clear_all(), self.updateSegmentationButtonState()))
         self.ui.clearTree.connect('clicked(bool)', self._checkCanApply)
         self.ui.saveTree.connect('clicked(bool)', self.graph_branches.save_networkX)
         self.ui.paintButton.connect('clicked(bool)', self.onStartSegmentationButton)
@@ -290,7 +291,6 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
                 self._parameterNode.directionPoint, self._parameterNode.percentInlierPoints,
                 self._parameterNode.percentThreshold, self._parameterNode.startingRadius]
 
-
     def _getParametersSegmentation(self) -> list:
         return [self._parameterNode.valueInflation, self._parameterNode.valueCurvature,
                 self._parameterNode.valueAttractionGradient, self._parameterNode.valueIterations,
@@ -337,19 +337,18 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
 
     def create_branch(self) -> None:
         with slicer.util.tryWithErrorDisplay("Failed to compute segmentation.", waitCursor=True):
-            # Compute output
             progress_bar = slicer.util.createProgressDialog(parent=slicer.util.mainWindow(), autoClose=False,
                                                             labelText="Please wait", windowTitle="Running RANSAC...",
                                                             value=0)
             progress_bar.setCancelButton(None)
             slicer.app.processEvents()
             self.old_graph_branches = self.graph_branches
-            self.graph_branches = self.logic.processBranch(self._getParametersBegin(), self.graph_branches, self.ui.createBranch.text == "Create new branch")
+            self.graph_branches = self.logic.processBranch(self._getParametersBegin(), self.graph_branches,
+                                                           self.ui.createBranch.text == "Create new branch")
             progress_bar.hide()
             progress_bar.close()
             self._checkCanApply()
             self.updateSegmentationButtonState()
-
 
     def paintArteriesWithMarkup(self):
         # Create a progress bar
@@ -362,19 +361,16 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
 
         segmentation = self.segmentationNode.GetSegmentation()
 
-        segment = segmentation.GetSegment(self.arteriesSegmentId)
-        name = segment.GetName()
-        color = segment.GetColor()
+        for segment_id in self.arteriesSegmentIds:
+            segmentation.RemoveSegment(segment_id)
 
-        segmentation.RemoveSegment(self.arteriesSegmentId)
-        self.arteriesSegmentId = segmentation.AddEmptySegment("", name, color)
-        segment = segmentation.GetSegment(self.arteriesSegmentId)
+        self.arteriesSegmentIds = [segmentation.AddEmptySegment("", name, colors_float[i % len(colors_float)]) for i, name in enumerate(self.graph_branches.names)]
+        segment = segmentation.GetSegment(self.arteriesSegmentIds[0])
 
         segmentEditorWidget = self.ui.SegmentEditorWidget
         segmentEditorNode = self.segmentEditorNode
 
         segmentEditorWidget.setSegmentationNode(self.segmentationNode)
-        segmentEditorNode.SetSelectedSegmentID(self.arteriesSegmentId)
 
         segmentEditorWidget.setActiveEffectByName("Logical operators")
 
@@ -386,6 +382,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         effect.setParameter("Operation", "UNION")
 
         for center_line_idx in range(len(self.graph_branches.centers_lines)):
+            segmentEditorNode.SetSelectedSegmentID(self.arteriesSegmentIds[center_line_idx])
             for point_idx in range(len(self.graph_branches.centers_lines[center_line_idx])):
                 point_pos = self.graph_branches.centers_lines[center_line_idx][point_idx]
                 radius = self.graph_branches.centers_line_radius[center_line_idx][point_idx]
@@ -396,7 +393,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
                 sphere.Update()
 
                 tmp_segment_id = self.segmentationNode.AddSegmentFromClosedSurfaceRepresentation(sphere.GetOutput(),
-                                                                                                 "tmp_segment", color)
+                                                                                                 "tmp_segment", colors_float[center_line_idx % len(colors_float)])
                 effect.setParameter("ModifierSegmentID", tmp_segment_id)
                 effect.self().onApply()
                 segmentation.RemoveSegment(tmp_segment_id)
@@ -418,12 +415,10 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
 
         segmentation = self.segmentationNode.GetSegmentation()
 
-        segment = segmentation.GetSegment(self.contoursSegmentId)
-        name = segment.GetName()
-        color = segment.GetColor()
+        if self.contoursSegmentId is not None:
+            segmentation.RemoveSegment(self.contoursSegmentId)
 
-        segmentation.RemoveSegment(self.contoursSegmentId)
-        self.contoursSegmentId = segmentation.AddEmptySegment("", name, color)
+        self.contoursSegmentId = segmentation.AddEmptySegment("", "Contours", [1., 215./255. ,0.])
         segmentationDisplayNode = self.segmentationNode.GetDisplayNode()
         segmentationDisplayNode.SetSegmentOpacity3D(self.contoursSegmentId, 0.1)
 
@@ -431,20 +426,26 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         binaryLabelmap.CreateDefaultDisplayNodes()
 
         segmentIdArg = vtk.vtkStringArray()
-        segmentIdArg.InsertNextValue(self.arteriesSegmentId)
-        slicer.modules.segmentations.logic().ExportSegmentsToLabelmapNode(self.segmentationNode, segmentIdArg, binaryLabelmap, self._parameterNode.inputVolume)
+        for segment_id in self.arteriesSegmentIds:
+            segmentIdArg.InsertNextValue(segment_id)
+        slicer.modules.segmentations.logic().ExportSegmentsToLabelmapNode(self.segmentationNode, segmentIdArg,
+                                                                          binaryLabelmap,
+                                                                          self._parameterNode.inputVolume)
 
         import skimage
 
-        numpy_labelmap_default = slicer.util.arrayFromVolume(binaryLabelmap)
-        numpy_labelmap_ball_6 = skimage.morphology.binary_dilation(numpy_labelmap_default, skimage.morphology.ball(radius=6))
-        numpy_labelmap_ball_6[skimage.morphology.binary_dilation(numpy_labelmap_default, skimage.morphology.ball(radius=4))] = False
+        numpy_labelmap_default = np.array(slicer.util.arrayFromVolume(binaryLabelmap) > 0, dtype=np.uint8)
+        numpy_labelmap_ball_6 = skimage.morphology.binary_dilation(numpy_labelmap_default,
+                                                                   skimage.morphology.ball(radius=6))
+        numpy_labelmap_ball_6[
+            skimage.morphology.binary_dilation(numpy_labelmap_default, skimage.morphology.ball(radius=4))] = False
 
         slicer.util.updateVolumeFromArray(binaryLabelmap, numpy_labelmap_ball_6.astype(np.uint8))
 
         segmentIdArg = vtk.vtkStringArray()
         segmentIdArg.InsertNextValue(self.contoursSegmentId)
-        slicer.modules.segmentations.logic().ImportLabelmapToSegmentationNode(binaryLabelmap, self.segmentationNode, segmentIdArg)
+        slicer.modules.segmentations.logic().ImportLabelmapToSegmentationNode(binaryLabelmap, self.segmentationNode,
+                                                                              segmentIdArg)
 
         slicer.mrmlScene.RemoveNode(binaryLabelmap)
 
@@ -453,7 +454,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         progress_bar.close()
 
     def updateSegmentationButtonState(self, *args):
-        paintButton : qt.QPushButton = self.ui.paintButton
+        paintButton: qt.QPushButton = self.ui.paintButton
         paintButton.enabled = len(self.graph_branches.centers_line_markups) != 0 and self._parameterNode.inputVolume
 
         if self.segmentationNode is None or self.segmentationNode.GetScene() is None:
@@ -465,22 +466,18 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         else:
             paintButton.text = "Update segmentation from branches"
 
-
     def onStartSegmentationButton(self) -> None:
         with slicer.util.tryWithErrorDisplay("Failed to compute segmentation.", waitCursor=True):
             if self.segmentationNode is None or self.segmentationNode.GetScene() is None:
                 self.segmentationNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLSegmentationNode")
-                self.nodeDeletionObserverTag = slicer.mrmlScene.AddObserver(slicer.vtkMRMLScene.NodeAboutToBeRemovedEvent, self.updateSegmentationButtonState)
+                self.nodeDeletionObserverTag = slicer.mrmlScene.AddObserver(
+                    slicer.vtkMRMLScene.NodeAboutToBeRemovedEvent, self.updateSegmentationButtonState)
                 self.segmentationNode.SetReferenceImageGeometryParameterFromVolumeNode(self._parameterNode.inputVolume)
 
                 self.segmentationNode.SetName("Lung Segmentation")
                 self.segmentationNode.CreateDefaultDisplayNodes()
-                self.contoursSegmentId = self.segmentationNode.GetSegmentation().AddEmptySegment("", "Contours",
-                                                                                                 [128. / 255., 174. / 255,
-                                                                                               128. / 255.])
-                self.arteriesSegmentId = self.segmentationNode.GetSegmentation().AddEmptySegment("", "Arteries",
-                                                                                                 [216. / 255., 101. / 255,
-                                                                                                  79. / 255.])
+                self.contoursSegmentId = None
+                self.arteriesSegmentIds = []
 
             # We do pause the tracking of segmentation deletion
             slicer.mrmlScene.RemoveObserver(self.nodeDeletionObserverTag)
@@ -512,6 +509,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
             # We track segmentation deletion
             self.nodeDeletionObserverTag = slicer.mrmlScene.AddObserver(
                 slicer.vtkMRMLScene.NodeAboutToBeRemovedEvent, self.updateSegmentationButtonState)
+
 
 #
 # pulmonary_arteries_segmentor_moduleLogic
@@ -562,6 +560,8 @@ class pulmonary_arteries_segmentor_moduleLogic(ScriptedLoadableModuleLogic):
                                     params[3], params[4], graph_branches, isNewBranch)
 
         return graph_branches
+
+
 #
 # pulmonary_arteries_segmentor_moduleTest
 #
