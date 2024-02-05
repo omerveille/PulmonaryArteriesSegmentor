@@ -308,6 +308,9 @@
        </item>
        <item>
         <widget class="qMRMLSegmentEditorWidget" name="SegmentEditorWidget">
+         <property name="maximumNumberOfUndoStates">
+          <number>2</number>
+         </property>
          <property name="defaultTerminologyEntrySettingsKey">
           <string notr="true"/>
          </property>
