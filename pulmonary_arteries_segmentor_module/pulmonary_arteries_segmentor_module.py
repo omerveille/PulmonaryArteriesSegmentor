@@ -1,4 +1,5 @@
 import importlib
+import math
 import os
 import sys
 from typing import Annotated, Optional
@@ -342,7 +343,6 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
                                                             value=0)
             progress_bar.setCancelButton(None)
             slicer.app.processEvents()
-            self.old_graph_branches = self.graph_branches
             self.graph_branches = self.logic.processBranch(self._getParametersBegin(), self.graph_branches,
                                                            self.ui.createBranch.text == "Create new branch")
 
@@ -353,6 +353,9 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
             threeDView.rotateToViewAxis(3)
             threeDView.resetFocalPoint()
             threeDView.resetCamera()
+
+            # Select the direction markup node to ease future node placement
+            slicer.app.applicationLogic().GetSelectionNode().SetActivePlaceNodeID(self._parameterNode.directionPoint.GetID())
 
             progress_bar.hide()
             progress_bar.close()
@@ -406,6 +409,8 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
                 effect.setParameter("ModifierSegmentID", tmp_segment_id)
                 effect.self().onApply()
                 segmentation.RemoveSegment(tmp_segment_id)
+            progress_bar.value = math.floor((center_line_idx / len(self.graph_branches.centers_lines)) * 100)
+            slicer.app.processEvents()
 
         slicer.modules.segmentations.logic().SetSegmentStatus(segment, 0)
         segmentEditorWidget.setActiveEffectByName("No editing")
@@ -444,10 +449,16 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         import skimage
 
         numpy_labelmap_default = np.array(slicer.util.arrayFromVolume(binaryLabelmap) > 0, dtype=np.bool_)
+        progress_bar.value = 20
+        slicer.app.processEvents()
         numpy_labelmap_ball_6 = skimage.morphology.binary_dilation(numpy_labelmap_default,
                                                                    skimage.morphology.ball(radius=6))
+        progress_bar.value = 70
+        slicer.app.processEvents()
         numpy_labelmap_ball_6[
             skimage.morphology.binary_dilation(numpy_labelmap_default, skimage.morphology.ball(radius=4))] = False
+        progress_bar.value = 90
+        slicer.app.processEvents()
 
         slicer.util.updateVolumeFromArray(binaryLabelmap, numpy_labelmap_ball_6.astype(np.uint8))
 
@@ -455,6 +466,8 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         segmentIdArg.InsertNextValue(self.contoursSegmentId)
         slicer.modules.segmentations.logic().ImportLabelmapToSegmentationNode(binaryLabelmap, self.segmentationNode,
                                                                               segmentIdArg)
+        progress_bar.value = 100
+        slicer.app.processEvents()
 
         slicer.mrmlScene.RemoveNode(binaryLabelmap)
 
