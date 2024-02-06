@@ -109,6 +109,11 @@ class GraphBranches():
 
         dialog = qt.QFileDialog()
         folder_path = dialog.getExistingDirectory(None, "Choose a folder")
+
+        # cancel any action if the user cancel / close the window / press escape
+        if not folder_path:
+            return
+
         # save with pickle
         with open(f'{folder_path}/graph_tree.pickle', 'wb') as f:
             pickle.dump(branch_graph, f, pickle.HIGHEST_PROTOCOL)
