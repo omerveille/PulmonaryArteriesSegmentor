@@ -355,7 +355,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
             threeDView.resetCamera()
 
             # Select the direction markup node to ease future node placement
-            slicer.app.applicationLogic().GetSelectionNode().SetActivePlaceNodeID(self._parameterNode.directionPoint.GetID())
+            slicer.app.applicationLogic().GetSelectionNode().SetActivePlaceNodeID(self._parameterNode.startingPoint.GetID())
 
             progress_bar.hide()
             progress_bar.close()
@@ -573,7 +573,7 @@ class pulmonary_arteries_segmentor_moduleLogic(ScriptedLoadableModuleLogic):
         vol = volume(vol, np_ijk_to_ras)
 
         starting_point = np.array([0, 0, 0])
-        params[1].GetNthControlPointPosition(0, starting_point)
+        params[1].GetNthControlPointPosition(params[1].GetNumberOfControlPoints()-1, starting_point)
 
         direction_point = np.array([0, 0, 0])
         params[2].GetNthControlPointPosition(params[2].GetNumberOfControlPoints()-1, direction_point)
