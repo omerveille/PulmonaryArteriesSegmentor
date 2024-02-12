@@ -205,15 +205,17 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         self.addObserver(slicer.mrmlScene, slicer.mrmlScene.StartCloseEvent, self.onSceneStartClose)
         self.addObserver(slicer.mrmlScene, slicer.mrmlScene.EndCloseEvent, self.onSceneEndClose)
 
-        # Slider
+        # Sliders
         self.ui.curveTextSize.connect('valueChanged(double)', self.changeTextSize)
 
         # Buttons
+        self.ui.placePointButton.connect('clicked(bool)', lambda: (print("Test")))
+
         self.ui.createBranch.connect('clicked(bool)', self.create_branch)
         self.ui.clearTree.connect('clicked(bool)',
-                                  lambda: (self.graph_branches.clear_all(), self.updateSegmentationButtonState()))
-        self.ui.clearTree.connect('clicked(bool)', self._checkCanApply)
+                                  lambda: (self.graph_branches.clear_all(), self.updateSegmentationButtonState(), self._checkCanApply()))
         self.ui.saveTree.connect('clicked(bool)', self.graph_branches.save_networkX)
+
         self.ui.paintButton.connect('clicked(bool)', self.onStartSegmentationButton)
 
         # Make sure parameter node is initialized (needed for module reload)
