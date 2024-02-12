@@ -205,6 +205,9 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         self.addObserver(slicer.mrmlScene, slicer.mrmlScene.StartCloseEvent, self.onSceneStartClose)
         self.addObserver(slicer.mrmlScene, slicer.mrmlScene.EndCloseEvent, self.onSceneEndClose)
 
+        # Slider
+        self.ui.curveTextSize.connect('valueChanged(double)', self.changeTextSize)
+
         # Buttons
         self.ui.createBranch.connect('clicked(bool)', self.create_branch)
         self.ui.clearTree.connect('clicked(bool)',
@@ -474,6 +477,17 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         # Hide and close progress bar
         progress_bar.hide()
         progress_bar.close()
+
+    def changeTextSize(self, value):
+        markups = self.graph_branches.centers_line_markups + self.graph_branches.contour_points_markups
+
+        if self._parameterNode.startingPoint:
+            markups += [self._parameterNode.startingPoint]
+        if self._parameterNode.directionPoint:
+            markups += [self._parameterNode.directionPoint]
+
+        for markup in markups:
+            markup.GetDisplayNode().SetTextScale(value)
 
     def updateSegmentationButtonState(self, *args):
         paintButton: qt.QPushButton = self.ui.paintButton
