@@ -32,7 +32,6 @@ class BranchTreeItem(qt.QTreeWidgetItem):
 
   def updateText(self):
     self.setText(0, f"{self.nodeId}")
-    self.setText(0, f"{self.nodeId}")
 
 class BranchTree(qt.QTreeWidget):
   """Tree representation of vessel branch nodes.
@@ -47,7 +46,6 @@ class BranchTree(qt.QTreeWidget):
     self.keyPressed = Signal("VesselBranchTreeItem, qt.Qt.Key")
     self.setContextMenuPolicy(qt.Qt.CustomContextMenu)
     self.customContextMenuRequested.connect(self.onContextMenu)
-    self.editing_node = False
     self.itemChanged.connect(self.onItemChange)
     self.itemRenamed = Signal(str, str)
     self.itemDropped = Signal()
@@ -76,10 +74,6 @@ class BranchTree(qt.QTreeWidget):
     self.setDropIndicatorShown(True)
     self.setDragDropMode(qt.QAbstractItemView.InternalMove)
     self.setAccessibleName("branch_tree")
-
-  def mouseDoubleClickEvent(self, event):
-    # Prevent the default double-click editing behavior
-    event.ignore()
 
   def clear(self):
     self._branchDict = {}
@@ -159,24 +153,21 @@ class BranchTree(qt.QTreeWidget):
     menu.exec_(self.mapToGlobal(position))
 
   def onItemChange(self, item, column):
-    if self.editing_node:
-      self.editing_node = False
-      previous = item.nodeId
-      new = item.text(0)
+    previous = item.nodeId
+    new = item.text(0)
 
-      # Forbid renaming with existing name
-      if self.isInTree(new):
-        item.updateText()
-        return
-
-      self._branchDict[item.text(0)] = self._branchDict.pop(item.nodeId)
-      item.nodeId = new
+    # Forbid renaming with existing name
+    if self.isInTree(new):
       item.updateText()
-      self.itemRenamed.emit(previous, new)
+      return
+
+    self._branchDict[item.text(0)] = self._branchDict.pop(item.nodeId)
+    item.nodeId = new
+    item.updateText()
+    self.itemRenamed.emit(previous, new)
 
   def renameItem(self):
     item: BranchTreeItem = self.currentItem()
-    self.editing_node = True
     self.editItem(item, 0)
 
   def _takeItem(self, nodeId):

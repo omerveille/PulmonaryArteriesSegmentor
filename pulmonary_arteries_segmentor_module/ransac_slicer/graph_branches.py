@@ -34,7 +34,7 @@ class GraphBranches():
     def create_new_markups(self, name, centers_line, contour_points):
         new_center_line = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsCurveNode")
         slicer.util.updateMarkupsControlPointsFromArray(new_center_line, centers_line)
-        # new_center_line.GetDisplayNode().SetTextScale(0)
+
         new_center_line.SetName(name+"_centers")
         new_center_line.AddObserver(slicer.vtkMRMLMarkupsNode.PointStartInteractionEvent , self.on_node_clicked)
 
@@ -160,7 +160,6 @@ class GraphBranches():
 
 
     def on_stop_interaction(self):
-        self.tree_widget.editing_node = False
         if self.current_tree_item is not None:
             self.current_tree_item.updateText()
 
