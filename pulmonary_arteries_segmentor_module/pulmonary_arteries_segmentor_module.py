@@ -209,7 +209,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         self.ui.curveTextSize.connect('valueChanged(double)', self.changeTextSize)
 
         # Buttons
-        self.ui.placePointButton.connect('clicked(bool)', lambda: (print("Test")))
+        self.ui.placePointButton.connect('clicked(bool)', self.startPlacePointProcedure)
 
         self.ui.createBranch.connect('clicked(bool)', self.create_branch)
         self.ui.clearTree.connect('clicked(bool)',
@@ -220,6 +220,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
 
         # Make sure parameter node is initialized (needed for module reload)
         self.initializeParameterNode()
+        self.checkCanPlacePoint()
 
     def cleanup(self) -> None:
         """
@@ -290,6 +291,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
             self._parameterNodeGuiTag = self._parameterNode.connectGui(self.ui)
             self.addObserver(self._parameterNode, vtk.vtkCommand.ModifiedEvent, self._checkCanApply)
             self.addObserver(self._parameterNode, vtk.vtkCommand.ModifiedEvent, self.updateSegmentationButtonState)
+            self.addObserver(self._parameterNode, vtk.vtkCommand.ModifiedEvent, self.checkCanPlacePoint)
             self._checkCanApply()
 
     def _getParametersBegin(self) -> list:
@@ -341,6 +343,76 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
             self.ui.saveTree.toolTip = "There is nothing to save."
             self.ui.saveTree.enabled = False
 
+    def checkCanPlacePoint(self, *args):
+        self.ui.placePointButton.enabled = self._parameterNode.startingPoint and self._parameterNode.directionPoint
+
+    def _addObserver(self, obj, event, fct):
+        if not self.hasObserver(obj, event, fct):
+            self.addObserver(obj, event, fct)
+
+    def _removeObserver(self, obj, event, fct):
+        if self.hasObserver(obj, event, fct):
+            self.removeObserver(obj, event, fct)
+    def startPlacePointProcedure(self):
+        self.startingPointPlaced = False
+        self.directionPointPlaced = False
+
+        starting_point = self._parameterNode.startingPoint
+
+        # Prepare the case where the user place the first point
+        self._addObserver(starting_point, vtkMRMLMarkupsNode.PointPositionDefinedEvent , self.directionPointPlacement)
+
+        # Prepare the case where the user cancel the point placement
+        self._addObserver(starting_point, vtkMRMLMarkupsNode.PointRemovedEvent, self.resetPlacementState)
+
+        # Start placing procedure
+        slicer.app.applicationLogic().GetSelectionNode().SetActivePlaceNodeID(starting_point.GetID())
+        slicer.modules.markups.logic().StartPlaceMode(1)
+
+    def directionPointPlacement(self, *args):
+        self.startingPointPlaced = True
+        starting_point = self._parameterNode.startingPoint
+
+        if not starting_point:
+            return
+
+        self._removeObserver(starting_point, vtkMRMLMarkupsNode.PointPositionDefinedEvent , self.directionPointPlacement)
+        self._removeObserver(starting_point, vtkMRMLMarkupsNode.PointRemovedEvent, self.resetPlacementState)
+
+        direction_point = self._parameterNode.directionPoint
+
+        self._addObserver(direction_point, vtkMRMLMarkupsNode.PointPositionDefinedEvent , self.validate_last_point)
+        self._addObserver(direction_point, vtkMRMLMarkupsNode.PointRemovedEvent, self.resetPlacementState)
+
+        # Place direction point
+        slicer.app.applicationLogic().GetSelectionNode().SetActivePlaceNodeID(direction_point.GetID())
+        slicer.modules.markups.logic().StartPlaceMode(1)
+    def validate_last_point(self, *args):
+        self.directionPointPlaced = True
+        slicer.modules.markups.logic().StartPlaceMode(0)
+        self.resetPlacementState()
+
+    def resetPlacementState(self, *args):
+        interactionNode = slicer.app.applicationLogic().GetInteractionNode()
+
+        if interactionNode.GetPlaceModePersistence() == 1 and interactionNode.GetCurrentInteractionMode() == 1:
+            # We do not go further because if those conditions are met, it means that the user moved cursor out of window
+            return
+
+        starting_point = self._parameterNode.startingPoint
+        self._removeObserver(starting_point, vtkMRMLMarkupsNode.PointPositionDefinedEvent , self.directionPointPlacement)
+        self._removeObserver(starting_point, vtkMRMLMarkupsNode.PointRemovedEvent, self.resetPlacementState)
+
+        direction_point = self._parameterNode.directionPoint
+        self._removeObserver(direction_point, vtkMRMLMarkupsNode.PointPositionDefinedEvent , self.validate_last_point)
+        self._removeObserver(direction_point, vtkMRMLMarkupsNode.PointRemovedEvent, self.resetPlacementState)
+
+        if self.startingPointPlaced and not self.directionPointPlaced:
+            starting_point.RemoveNthControlPoint(starting_point.GetNumberOfControlPoints() - 1)
+
+        self.startingPointPlaced = False
+        self.directionPointPlaced = False
+
     def create_branch(self) -> None:
         with slicer.util.tryWithErrorDisplay("Failed to compute segmentation.", waitCursor=True):
             progress_bar = slicer.util.createProgressDialog(parent=slicer.util.mainWindow(), autoClose=False,
@@ -355,11 +427,9 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
             layoutManager = slicer.app.layoutManager()
             threeDWidget = layoutManager.threeDWidget(0)
             threeDView = threeDWidget.threeDView()
-            threeDView.rotateToViewAxis(3)
             threeDView.resetFocalPoint()
-            threeDView.resetCamera()
 
-            # Select the direction markup node to ease future node placement
+            # Select the starting markup node to ease future node placement
             slicer.app.applicationLogic().GetSelectionNode().SetActivePlaceNodeID(self._parameterNode.startingPoint.GetID())
 
             progress_bar.hide()
