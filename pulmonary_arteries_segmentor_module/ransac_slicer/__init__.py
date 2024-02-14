@@ -12,7 +12,7 @@ def check_installed(module: str | tuple[str, str]) -> None:
     if find_spec(module[0] if is_tuple else module) is None:
         subprocess.check_call([sys.executable, '-m', 'pip', 'install', module[1] if is_tuple else module])
 
-required_modules = ["numpy", "scipy", "trimesh", "pandas", ("nrrd", "pynrrd"), "nibabel"]
+required_modules = ["numpy", "scipy", "trimesh", "pandas", ("nrrd", "pynrrd"), "nibabel", ("skimage", "scikit-image")]
 
 for module in required_modules:
     check_installed(module)
