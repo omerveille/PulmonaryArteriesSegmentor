@@ -490,7 +490,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
                 effect.setParameter("ModifierSegmentID", tmp_segment_id)
                 effect.self().onApply()
                 segmentation.RemoveSegment(tmp_segment_id)
-            progress_bar.value = math.floor((center_line_idx / len(self.graph_branches.centers_lines)) * 100)
+            progress_bar.value = math.floor(((center_line_idx + 1) / len(self.graph_branches.centers_lines)) * 100)
             slicer.app.processEvents()
 
         slicer.modules.segmentations.logic().SetSegmentStatus(segment, 0)
