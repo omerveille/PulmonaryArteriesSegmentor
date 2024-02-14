@@ -165,14 +165,14 @@
           <string>Configuration</string>
          </property>
          <layout class="QFormLayout" name="formLayout_2">
-          <item row="3" column="0">
+          <item row="1" column="0">
            <widget class="QLabel" name="inlierPointsLabel">
             <property name="text">
              <string>Inlier points (%)</string>
             </property>
            </widget>
           </item>
-          <item row="3" column="1">
+          <item row="1" column="1">
            <widget class="ctkSliderWidget" name="inlierPointsSliderWidget">
             <property name="toolTip">
              <string>Select a percentage of inlier points to consider a cylinder valid.</string>
@@ -188,14 +188,14 @@
             </property>
            </widget>
           </item>
-          <item row="4" column="0">
+          <item row="2" column="0">
            <widget class="QLabel" name="thresholdLabel">
             <property name="text">
              <string>Threshold (%)</string>
             </property>
            </widget>
           </item>
-          <item row="4" column="1">
+          <item row="2" column="1">
            <widget class="ctkSliderWidget" name="thresholdSliderWidget">
             <property name="toolTip">
              <string>Select the threshold for which a point is considered inlier. X % of previous cylinder radius.</string>
@@ -211,14 +211,14 @@
             </property>
            </widget>
           </item>
-          <item row="5" column="0">
+          <item row="3" column="0">
            <widget class="QLabel" name="startingRadiusLabel">
             <property name="text">
              <string>Starting radius (mm)</string>
             </property>
            </widget>
           </item>
-          <item row="5" column="1">
+          <item row="3" column="1">
            <widget class="QDoubleSpinBox" name="startingRadiusDoubleSpinBox">
             <property name="toolTip">
              <string>Select the radius of the starting cylinder radius in millimeter.</string>
@@ -234,7 +234,7 @@
             </property>
            </widget>
           </item>
-          <item row="2" column="0" colspan="2">
+          <item row="0" column="0" colspan="2">
            <widget class="QPushButton" name="placePointButton">
             <property name="enabled">
              <bool>false</bool>
