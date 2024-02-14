@@ -10,10 +10,9 @@ def run_ransac(vol, starting_point, direction_point, starting_radius, pct_inlier
                threshold, graph_branches: GraphBranches, isNewBranch):
     # Input info for branch tracking (in RAS coordinates)
     if isNewBranch:
-        _, cb, idx_cb, idx_cyl = closest_branch(direction_point, graph_branches.branch_list)
+        _, _, idx_cb, idx_cyl = closest_branch(starting_point, graph_branches.branch_list)
         if idx_cyl == len(graph_branches.centers_lines[idx_cb]) - 2:
             idx_cyl = len(graph_branches.centers_lines[idx_cb]) - 1
-        # starting_point = cb[idx_cyl].center
 
         # Update Graph
         parent_node = graph_branches.names[idx_cb]

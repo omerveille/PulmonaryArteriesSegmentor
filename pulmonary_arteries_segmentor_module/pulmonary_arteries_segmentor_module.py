@@ -160,6 +160,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         self.graph_branches = None
         self.segmentationNode = None
         self.nodeDeletionObserverTag = None
+        self.isPlacingPoints = False
 
     def setup(self) -> None:
         """
@@ -319,7 +320,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
             self.addObserver(direction_point, vtkMRMLMarkupsNode.PointAddedEvent, self._checkCanApply)
             self.addObserver(direction_point, vtkMRMLMarkupsNode.PointRemovedEvent, self._checkCanApply)
 
-        if self._parameterNode and all(
+        if self._parameterNode and not self.isPlacingPoints and all(
                 self._getParametersBegin()) and starting_point.GetNumberOfControlPoints() and direction_point.GetNumberOfControlPoints():
             self.ui.createBranch.enabled = True
             if len(self.graph_branches.names) == 0:
@@ -356,6 +357,8 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
     def startPlacePointProcedure(self):
         self.startingPointPlaced = False
         self.directionPointPlaced = False
+        self.isPlacingPoints = True
+        self.ui.createBranch.enabled = False
 
         starting_point = self._parameterNode.startingPoint
 
@@ -398,6 +401,9 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         if interactionNode.GetPlaceModePersistence() == 1 and interactionNode.GetCurrentInteractionMode() == 1:
             # We do not go further because if those conditions are met, it means that the user moved cursor out of window
             return
+
+        self.isPlacingPoints = False
+        self.ui.createBranch.enabled = True
 
         starting_point = self._parameterNode.startingPoint
         self._removeObserver(starting_point, vtkMRMLMarkupsNode.PointPositionDefinedEvent , self.directionPointPlacement)
