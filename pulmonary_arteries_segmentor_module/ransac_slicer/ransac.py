@@ -7,7 +7,7 @@ import qt
 
 
 def run_ransac(vol, starting_point, direction_point, starting_radius, pct_inlier_points,
-               threshold, graph_branches: GraphBranches, isNewBranch):
+               threshold, graph_branches: GraphBranches, isNewBranch, progress_dialog):
     # Input info for branch tracking (in RAS coordinates)
     if isNewBranch:
         _, _, idx_cb, idx_cyl = closest_branch(starting_point, graph_branches.branch_list)
@@ -39,7 +39,7 @@ def run_ransac(vol, starting_point, direction_point, starting_radius, pct_inlier
     cyl = cylinder(starting_point, init_radius, direction_point, height=0)
 
     # Perform tracking
-    centers_line, contour_points, center_line_radius = track_branch(vol, cyl, cfg, end_center_line, end_center_radius, [elt for branch in graph_branches.branch_list for elt in branch])
+    centers_line, contour_points, center_line_radius = track_branch(vol, cyl, cfg, end_center_line, end_center_radius, [elt for branch in graph_branches.branch_list for elt in branch], progress_dialog)
 
     if len(centers_line) <= 1:
         msg = qt.QMessageBox()
