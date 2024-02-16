@@ -35,6 +35,8 @@ To install the plugin, you have to do the following steps:
 3) Click on `Select Extension`, a folder tab will appear, select the repository folder / the zip folder you extracted, and click on `Choose`.
 4) A popup will show, select `Yes`.⚠️ Make sure you are connected to the internet. When loading the module, it will check if you have all the dependencies and attempt to download the missing ones. ⚠️
 5) After downloading the missing dependencies, the plugin can be found in the module drop-down menu, under the `Segmentation` category.
+   
+[install.webm](https://github.com/Leirbag-gabrieL/PulmonaryArteriesSegmentor/assets/91014653/34f93e8a-386e-4120-82c6-3b046f5a420b)
 
 Tips: If you struggle to find any of those modules, you can use the magnifying glass to search modules by name.
 
@@ -53,24 +55,39 @@ Those points will indicate in which direction the algorithm will travel in order
 
 Select a radius for the vessel, and then click on the `Create root` / `Create new branch` button in order to start finding a centerline.
 
+[first_branch.webm](https://github.com/Leirbag-gabrieL/PulmonaryArteriesSegmentor/assets/91014653/2fdbb671-36bd-47d8-a145-2a410324bd7a)
+
 Once the processing is done, you can add new branches to the tree by adding two new starting and direction points by doing the same process.
 
+[second_branch.webm](https://github.com/Leirbag-gabrieL/PulmonaryArteriesSegmentor/assets/91014653/a6ca1c94-bc54-421c-97b3-1c6fbf3118c2)
+
 You can delete a branch from the hierarchy by clicking on the bin icon, or clear the whole tree by clicking on the `Clear tree` button.
+
+[deleting_branch.webm](https://github.com/Leirbag-gabrieL/PulmonaryArteriesSegmentor/assets/91014653/dcea0cd5-aac7-4867-9e52-1abc206556b2)
+
 If the centerline is correct until a certain point where it is not, you can delete the irrelevant part by selecting the last correct point and right-clicking the concerned artery in the hierarchy, and selecting `Remove end of the branch`.
 
+[remove_end_of_branch.webm](https://github.com/Leirbag-gabrieL/PulmonaryArteriesSegmentor/assets/91014653/2d9fdb01-f2fb-41e1-b7aa-c03342710ef3)
+
 If you want, you can also save the hierarchy of all the vessel points into a networkX graph, which is exported in `.json` and `.pickle` files.
+
+[save_as_json.webm](https://github.com/Leirbag-gabrieL/PulmonaryArteriesSegmentor/assets/91014653/6ae7029b-8293-400b-9ad5-b8aa047892c5)
+
 ### The segmentation tab 🧩
 The segmentation tab is pretty straightforward, you have a button `Create segmentation from branches` / `Update segmentation from branches`, and when you click on it, it creates a new segmentation, which is an initialization for the 3D slicer's region-growing.
 You can always add segments / edit the segmentation generated as you want in the segmentation widget.
-To have a finalize segmentation, you just have to run the region-growing of slicer which can be found in the plugin directly.
+
+[generating_segmentation_start.webm](https://github.com/Leirbag-gabrieL/PulmonaryArteriesSegmentor/assets/91014653/1a677776-0755-4805-862d-9bb474498c92)
 
 To finalize segmentation, you just have to run the region-growing of slicer which can be found in the plugin directly.
+
+[region_growing.webm](https://github.com/Leirbag-gabrieL/PulmonaryArteriesSegmentor/assets/91014653/1972b1e9-8f2d-4f1c-87ae-53d16eaf0362)
 
 ## Algorithms involved
 ### Centerline ➰
 In this part, the main algorithm used is RANSAC. Basically, we take a set of points around the starting and direction points and try to fit a cylinder. If the set of points is a good candidate for a cylinder, then we keep this cylinder and iterate to find a new one with a certain width and height proportional to the last cylinder in a predefined range of angles. The algorithm stops eventually when there are no more fitting cylinders to add.
 
-When adding a new branch, we simply rerun a RANSAC, find the closest point to the starting point, and reorder the branches so that they form a tree.
+When adding a new branch, we simply rerun a RANSAC with the latest points added to the starting and direction point lists. After that, we find the closest point to the starting point in the already-created branches, this point will be considered as the intersection of the two branches. We later reorder the branches so that they form a tree.
 
 ### Segmentation 🧩
 In order to draw each segment starting seed for the segmentation, we simply iterate through each point of the centerline, and for each point, we draw a sphere of the radius of the vessel. We underestimate the radius so that the segmentation can find the accurate radius. The radius of a vessel is the distance between the closest contour point and the centerline.
