@@ -6,9 +6,12 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>783</width>
+    <width>623</width>
     <height>763</height>
    </rect>
+  </property>
+  <property name="toolTip">
+   <string>Start a new placing phase for starting and direction points.</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
@@ -22,9 +25,9 @@
      <property name="currentIndex">
       <number>0</number>
      </property>
-     <widget class="QWidget" name="begin">
+     <widget class="QWidget" name="centerline">
       <attribute name="title">
-       <string>Begin</string>
+       <string>Centerline</string>
       </attribute>
       <layout class="QVBoxLayout" name="verticalLayout_3">
        <item>
@@ -67,23 +70,21 @@
             </property>
            </widget>
           </item>
-         </layout>
-        </widget>
-       </item>
-       <item>
-        <widget class="ctkCollapsibleButton" name="configurationCollapsibleButton">
-         <property name="text">
-          <string>Configuration</string>
-         </property>
-         <layout class="QFormLayout" name="formLayout_2">
-          <item row="0" column="0">
+          <item row="1" column="0">
            <widget class="QLabel" name="label_2">
             <property name="text">
-             <string>Starting point</string>
+             <string>Starting point list</string>
             </property>
            </widget>
           </item>
-          <item row="0" column="1">
+          <item row="2" column="0">
+           <widget class="QLabel" name="label_3">
+            <property name="text">
+             <string>Direction point list</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
            <widget class="qMRMLNodeComboBox" name="startingPointSelector">
             <property name="toolTip">
              <string>Select a starting point for the first cylinder.</string>
@@ -97,7 +98,7 @@
              <bool>false</bool>
             </property>
             <property name="baseName">
-             <string>Starting point</string>
+             <string>Starting point list</string>
             </property>
             <property name="noneEnabled">
              <bool>true</bool>
@@ -119,14 +120,7 @@
             </property>
            </widget>
           </item>
-          <item row="1" column="0">
-           <widget class="QLabel" name="label_3">
-            <property name="text">
-             <string>Direction point</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="1">
+          <item row="2" column="1">
            <widget class="qMRMLNodeComboBox" name="directionPointSelector">
             <property name="toolTip">
              <string>Select a direction point for the first cylinder.</string>
@@ -140,7 +134,7 @@
              <bool>false</bool>
             </property>
             <property name="baseName">
-             <string>Direction point</string>
+             <string>Direction point list</string>
             </property>
             <property name="noneEnabled">
              <bool>true</bool>
@@ -162,14 +156,23 @@
             </property>
            </widget>
           </item>
-          <item row="2" column="0">
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="ctkCollapsibleButton" name="configurationCollapsibleButton">
+         <property name="text">
+          <string>Configuration</string>
+         </property>
+         <layout class="QFormLayout" name="formLayout_2">
+          <item row="1" column="0">
            <widget class="QLabel" name="inlierPointsLabel">
             <property name="text">
              <string>Inlier points (%)</string>
             </property>
            </widget>
           </item>
-          <item row="2" column="1">
+          <item row="1" column="1">
            <widget class="ctkSliderWidget" name="inlierPointsSliderWidget">
             <property name="toolTip">
              <string>Select a percentage of inlier points to consider a cylinder valid.</string>
@@ -185,14 +188,14 @@
             </property>
            </widget>
           </item>
-          <item row="3" column="0">
+          <item row="2" column="0">
            <widget class="QLabel" name="thresholdLabel">
             <property name="text">
              <string>Threshold (%)</string>
             </property>
            </widget>
           </item>
-          <item row="3" column="1">
+          <item row="2" column="1">
            <widget class="ctkSliderWidget" name="thresholdSliderWidget">
             <property name="toolTip">
              <string>Select the threshold for which a point is considered inlier. X % of previous cylinder radius.</string>
@@ -208,14 +211,14 @@
             </property>
            </widget>
           </item>
-          <item row="4" column="0">
+          <item row="3" column="0">
            <widget class="QLabel" name="startingRadiusLabel">
             <property name="text">
              <string>Starting radius (mm)</string>
             </property>
            </widget>
           </item>
-          <item row="4" column="1">
+          <item row="3" column="1">
            <widget class="QDoubleSpinBox" name="startingRadiusDoubleSpinBox">
             <property name="toolTip">
              <string>Select the radius of the starting cylinder radius in millimeter.</string>
@@ -228,6 +231,16 @@
             </property>
             <property name="SlicerParameterName" stdset="0">
              <string>startingRadius</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="0" colspan="2">
+           <widget class="QPushButton" name="placePointButton">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+            <property name="text">
+             <string>Place a new starting and direction point</string>
             </property>
            </widget>
           </item>
@@ -266,6 +279,39 @@
           <string>Clear tree</string>
          </property>
         </widget>
+       </item>
+       <item>
+        <layout class="QFormLayout" name="curveOptionsLayout">
+         <item row="0" column="0">
+          <widget class="QLabel" name="label_4">
+           <property name="text">
+            <string>Curve text size</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="ctkSliderWidget" name="curveTextSize">
+           <property name="toolTip">
+            <string>Change the curves text size.</string>
+           </property>
+           <property name="singleStep">
+            <double>0.100000000000000</double>
+           </property>
+           <property name="pageStep">
+            <double>2.000000000000000</double>
+           </property>
+           <property name="maximum">
+            <double>20.000000000000000</double>
+           </property>
+           <property name="value">
+            <double>3.000000000000000</double>
+           </property>
+           <property name="suffix">
+            <string> %</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
        </item>
        <item>
         <spacer name="verticalSpacer_2">

@@ -1,6 +1,6 @@
 import numpy as np
 import scipy.ndimage as sndi
-from . import helper, io
+from . import helper
 
 
 def ras_to_vtk(ijk_to_ras):
@@ -64,58 +64,6 @@ class volume:
 
         # Default to linear interpolation
         self._order = 1
-
-    @classmethod
-    def from_nifti(cls, f_name):
-        """
-        Load a volume instance from a Nifti file
-
-        Args:
-            f_name (str): Nifti filepath
-
-        Returns:
-            volume: Volume created
-        """
-
-        vol, ijk_to_ras = io.read_nii_from_file(f_name)
-
-        return cls(vol, ijk_to_ras)
-
-    def to_nifti(self, f_name):
-        """
-        Save volume to Nifti file
-
-        Args:
-            f_name (str): Nifti filepath
-        """
-
-        io.save_nii_to_file(f_name, self.data, self.ijk_to_ras)
-
-    @classmethod
-    def from_nrrd(cls, f_name):
-        """
-        Load a volume instance from a nrrd file
-
-        Args:
-            f_name (str): Nrrd filepath
-
-        Returns:
-            volume: Volume created
-        """
-
-        vol, header = io.read_nrrd_from_file(f_name)
-
-        # Compute IJK to RAS Matrix
-        ijk_to_lps = np.zeros((4, 4,))
-        ijk_to_lps[:3, :3] = header['space directions'].T
-        ijk_to_lps[:3, 3] = header['space origin']
-        ijk_to_lps[3, 3] = 1
-
-        lps_to_ras = np.diag([-1, -1, 1, 1])
-
-        ijk_to_ras = np.dot(lps_to_ras, ijk_to_lps)
-
-        return cls(vol, ijk_to_ras)
 
     def __call__(self, p):
         """

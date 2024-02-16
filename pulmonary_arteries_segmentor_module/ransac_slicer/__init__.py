@@ -1,18 +1,81 @@
 from __future__ import annotations
+
 import subprocess
 import sys
 from importlib.util import find_spec
 
-def check_installed(module: str | tuple[str, str]) -> None:
+
+import slicer
+import qt
+import math
+
+def make_custom_progress_bar(labelText="labelText", windowTitle="windowTitle", width=None, height=None):
+    progress_bar = slicer.util.createProgressDialog(parent=slicer.util.mainWindow(), autoClose=False,
+                                                    labelText=labelText,
+                                                    windowTitle=windowTitle,
+                                                    value=0)
+    shape = (progress_bar.width if width is None else width, progress_bar.height if height is None else height)
+    # Ensure the dialog is deleted when closed
+    progress_bar.setAttribute(qt.Qt.WA_DeleteOnClose)
+    progress_bar.setCancelButton(None)
+    progress_bar.resize(*shape)
+    progress_bar.show()
+    slicer.app.processEvents()
+    return progress_bar
+
+class CustomStatusDialog:
+    def __init__(self, windowTitle="windowTitle", text="text", width=None, height=None):
+        dialog = qt.QDialog(slicer.util.mainWindow())
+        dialog.setWindowTitle(windowTitle)
+        # Ensure the dialog is deleted when closed
+        dialog.setAttribute(qt.Qt.WA_DeleteOnClose)
+        shape = (dialog.width if width is None else width, dialog.height if height is None else height)
+        dialog.resize(*shape)
+        layout = qt.QVBoxLayout()
+        label = qt.QLabel(text)
+        font = label.font
+        font.setPointSize(14)
+        label.setFont(font)
+        # Center the text
+        label.setAlignment(qt.Qt.AlignCenter)
+        layout.addWidget(label)
+        dialog.setLayout(layout)
+        dialog.show()
+        slicer.app.processEvents()
+
+        self.label = label
+        self.dialog = dialog
+    def setText(self, text : str):
+        self.label.setText(text)
+
+    def close(self):
+        self.dialog.close()
+
+def install_missing_module(modules: list[str | tuple[str, str]]) -> None:
     """
     Check that the module is installed, if not install it
-    :param module: str or tuple: module name as string or tuple of strings, depending if install name match module name
+    :param modules: list of str or tuple[str, str], modules to install
     """
-    is_tuple = isinstance(module, tuple)
-    if find_spec(module[0] if is_tuple else module) is None:
-        subprocess.check_call([sys.executable, '-m', 'pip', 'install', module[1] if is_tuple else module])
+    progress_bar = make_custom_progress_bar(labelText="Installing dependency...", windowTitle="Installing dependencies...", width=300)
+    print("Installing missing dependencies...")
+    for i, module in enumerate(modules):
+        module_name = module[1] if isinstance(module, tuple) else module
+        install_text = f"Installing {module_name}..."
+        print(install_text)
+        progress_bar.labelText = install_text
+        slicer.app.processEvents()
 
-required_modules = ["numpy", "scipy", "trimesh", "pandas", ("nrrd", "pynrrd"), "nibabel"]
+        subprocess.check_call([sys.executable, '-m', 'pip', 'install', module_name])
+        install_text = f"{module_name} installed !"
+        print(install_text)
+        progress_bar.labelText = install_text
+        progress_bar.value = math.floor(((i + 1) / len(modules)) * 100)
+        slicer.app.processEvents()
 
-for module in required_modules:
-    check_installed(module)
+    progress_bar.close()
+
+missing_modules = [module for module in ["numpy", "scipy", "trimesh", ("skimage", "scikit-image"), "networkx"] if find_spec(module[0] if isinstance(module, tuple) else module) is None]
+
+if missing_modules:
+    with slicer.util.tryWithErrorDisplay("Failed to install dependencies.", waitCursor=True):
+        install_missing_module(missing_modules)

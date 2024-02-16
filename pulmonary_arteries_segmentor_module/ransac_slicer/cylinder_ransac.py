@@ -1,5 +1,8 @@
 import numpy as np
 import math
+
+import slicer
+
 from . import cylinder, helper
 
 
@@ -706,7 +709,7 @@ def track_cylinder(vol, cyl, cfg):
             break
 
 
-def track_branch(vol, cyl, cfg, centers_line, center_line_radius, branch):
+def track_branch(vol, cyl, cfg, centers_line, center_line_radius, branch, progress_dialog):
     """
     Performs the tracking in a volume, given an input cylinder and a configuration
 
@@ -719,6 +722,10 @@ def track_branch(vol, cyl, cfg, centers_line, center_line_radius, branch):
     """
 
     contour_points = []
+
+    centerline_cpt = 0
+    contour_points_cpt = 0
+
     for _, (_cylinder, current_contour_points) in enumerate(track_cylinder(vol, cyl, cfg)):
         # Criteria for acceptance: Need to be better justified especially third one
         #   1- Valid cylinder (i.shape[0] > 0)
@@ -735,6 +742,13 @@ def track_branch(vol, cyl, cfg, centers_line, center_line_radius, branch):
             radius = np.linalg.norm(current_contour_points - _cylinder.center, axis=1).min()
             center_line_radius.append(radius)
 
+            centerline_cpt += 1
+            contour_points_cpt += len(current_contour_points)
+
+            progress_dialog.setText(f"Centerline points found: {centerline_cpt}\nContour points found: {contour_points_cpt}")
+            slicer.app.processEvents()
+
         else:
             break
+
     return centers_line, contour_points, center_line_radius
