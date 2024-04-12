@@ -163,6 +163,9 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
 
         self.ui.paintButton.connect('clicked(bool)', self.onStartSegmentationButton)
 
+        self.ui.lockButton.connect('clicked(bool)', self.onLockButton)
+        self.ui.showButton.connect('clicked(bool)', self.onShowButton)
+
         # Make sure parameter node is initialized (needed for module reload)
         self.initializeParameterNode()
         self.checkCanPlacePoint()
@@ -529,9 +532,8 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
             self.segmentationNode.GetDisplayNode().SetVisibility3D(True)
 
             # Hide markup nodes
-            for markup in [self.graph_branches.centers_line_markups, self.graph_branches.contour_points_markups]:
-                for branch in markup:
-                    branch.GetDisplayNode().SetVisibility(False)
+            for branch in self.graph_branches.centers_line_markups + self.graph_branches.contour_points_markups:
+                branch.GetDisplayNode().SetVisibility(False)
 
             for icon in self.graph_branches.tree_widget._branchDict.values():
                 icon.setIcon(TreeColumnRole.VISIBILITY_CENTER, Icons.visibleOff)
@@ -544,6 +546,35 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
             # We track segmentation deletion
             self.nodeDeletionObserverTag = slicer.mrmlScene.AddObserver(
                 slicer.vtkMRMLScene.NodeAboutToBeRemovedEvent, self.updateSegmentationButtonState)
+
+    def onLockButton(self) -> None:
+        button = self.ui.lockButton
+        markups = self.graph_branches.centers_line_markups + self.graph_branches.contour_points_markups
+
+        if button.checked:
+            button.text = "Unlock Tree"
+            for markup in markups:
+                markup.LockedOn()
+        else:
+            button.text = "Lock Tree"
+            for markup in markups:
+                markup.LockedOff()
+
+    def onShowButton(self) -> None:
+        button = self.ui.showButton
+        markups = self.graph_branches.centers_line_markups
+        if button.text == "Hide centerlines":
+            button.text = "Show centerlines"
+            for markup in markups:
+                markup.GetDisplayNode().SetVisibility(False)
+            for icon in self.graph_branches.tree_widget._branchDict.values():
+                icon.setIcon(TreeColumnRole.VISIBILITY_CENTER, Icons.visibleOff)
+        else:
+            button.text = "Hide centerlines"
+            for markup in markups:
+                markup.GetDisplayNode().SetVisibility(True)
+            for icon in self.graph_branches.tree_widget._branchDict.values():
+                icon.setIcon(TreeColumnRole.VISIBILITY_CENTER, Icons.visibleOn)
 
 
 #
