@@ -51,6 +51,7 @@ class BranchTree(qt.QTreeWidget):
     self.itemDropped = Signal()
     self.itemRemoveEnd = Signal("VesselBranchTreeItem")
     self.itemDeleted = Signal("VesselBranchTreeItem")
+    self.headerClicked = Signal(int)
 
     self._branchDict = {}
 
@@ -69,21 +70,13 @@ class BranchTree(qt.QTreeWidget):
     self.headerItem().setIcon(TreeColumnRole.VISIBILITY_CONTOUR, Icons.toggleVisibility)
     self.headerItem().setIcon(TreeColumnRole.DELETE, Icons.delete)
 
-    # Enable reordering by drag and drop
-    self.setDragEnabled(False)
-    self.setDropIndicatorShown(True)
-    self.setDragDropMode(qt.QAbstractItemView.InternalMove)
-    self.setAccessibleName("branch_tree")
+    # Enable clicking on headers
+    self.header().setSectionsClickable(True)
+    self.header().sectionClicked.connect(self.onHeaderClicked)
 
   def clear(self):
     self._branchDict = {}
     qt.QTreeWidget.clear(self)
-
-  def clickItem(self, item):
-    item = self.getTreeWidgetItem(item) if isinstance(item, str) else item
-    self.setItemSelected(item)
-    if item is not None:
-      self.itemClicked.emit(item, 0)
 
   def setItemSelected(self, item):
     if item is not None:
@@ -165,6 +158,9 @@ class BranchTree(qt.QTreeWidget):
     item.nodeId = new
     item.updateText()
     self.itemRenamed.emit(previous, new)
+
+  def onHeaderClicked(self, column):
+      self.headerClicked.emit(column)
 
   def renameItem(self):
     item: BranchTreeItem = self.currentItem()

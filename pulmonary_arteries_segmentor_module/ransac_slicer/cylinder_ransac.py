@@ -709,7 +709,7 @@ def track_cylinder(vol, cyl, cfg):
             break
 
 
-def track_branch(vol, cyl, cfg, centers_line, center_line_radius, branch, progress_dialog):
+def track_branch(vol, cyl, cfg, centers_line, center_line_radius, contour_points, branch, progress_dialog):
     """
     Performs the tracking in a volume, given an input cylinder and a configuration
 
@@ -720,8 +720,6 @@ def track_branch(vol, cyl, cfg, centers_line, center_line_radius, branch, progre
         centers_curve (np.ndarray): Centers curve's data
         contour_point (np.ndarray): Contour points' data
     """
-
-    contour_points = []
 
     centerline_cpt = 0
     contour_points_cpt = 0

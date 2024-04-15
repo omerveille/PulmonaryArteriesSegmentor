@@ -6,7 +6,12 @@ from typing import Annotated, Optional
 import numpy as np
 import qt
 import slicer
+import slicer.util
 import vtk
+import json
+from networkx.readwrite import json_graph
+import networkx as nx
+
 from slicer import (vtkMRMLScalarVolumeNode, vtkMRMLMarkupsFiducialNode)
 from slicer.ScriptedLoadableModule import (ScriptedLoadableModuleWidget, ScriptedLoadableModuleLogic,
                                            ScriptedLoadableModule, ScriptedLoadableModuleTest)
@@ -24,6 +29,7 @@ try:
 except Exception as e:
     print(f"Exception occurred while reloading\n{e}")
 
+from ransac_slicer.cylinder import cylinder
 from ransac_slicer.ransac import run_ransac
 from ransac_slicer.graph_branches import GraphBranches
 from ransac_slicer.branch_tree import BranchTree, TreeColumnRole, Icons
@@ -140,10 +146,9 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
 
         self.branch_tree = BranchTree()
         begin_tab = self.ui.tabWidget.widget(0)
-        begin_tab.layout().insertWidget(5, self.branch_tree)
-        # self.branch_tree.addTopLevelItem(Branch_tree_item("test"))
+        begin_tab.layout().insertWidget(6, self.branch_tree)
 
-        self.graph_branches = GraphBranches(self.branch_tree)
+        self.graph_branches = GraphBranches(self.branch_tree, self.ui.showCenterlineButton ,self.ui.showContourPointsButton, self.ui.lockButton)
         # Connections
 
         # These connections ensure that we update parameter node when scene is closed
@@ -159,12 +164,15 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         self.ui.createBranch.connect('clicked(bool)', self.create_branch)
         self.ui.clearTree.connect('clicked(bool)',
                                   lambda: (self.graph_branches.clear_all(), self.updateSegmentationButtonState(), self._checkCanApply()))
-        self.ui.saveTree.connect('clicked(bool)', self.graph_branches.save_networkX)
+
+        self.ui.exportTreeButton.connect('clicked(bool)', self.graph_branches.save_networkX)
+        self.ui.loadTreeArchitectureButton.connect('clicked(bool)', self.onLoadTreeArchitecture)
 
         self.ui.paintButton.connect('clicked(bool)', self.onStartSegmentationButton)
 
         self.ui.lockButton.connect('clicked(bool)', self.onLockButton)
-        self.ui.showButton.connect('clicked(bool)', self.onShowButton)
+        self.ui.showCenterlineButton.connect('clicked(bool)', lambda: self.graph_branches.on_header_clicked(TreeColumnRole.VISIBILITY_CENTER))
+        self.ui.showContourPointsButton.connect('clicked(bool)', lambda: self.graph_branches.on_header_clicked(TreeColumnRole.VISIBILITY_CONTOUR))
 
         # Make sure parameter node is initialized (needed for module reload)
         self.initializeParameterNode()
@@ -265,11 +273,11 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
                 self._getParametersRansac()) and starting_point.GetNumberOfControlPoints() and direction_point.GetNumberOfControlPoints():
             self.ui.createBranch.enabled = True
             if len(self.graph_branches.names) == 0:
-                self.ui.createBranch.text = "Create root"
-                self.ui.createBranch.toolTip = "Create root."
+                self.ui.createBranch.text = "Create Root"
+                self.ui.createBranch.toolTip = "Create Root."
             else:
-                self.ui.createBranch.text = "Create new branch"
-                self.ui.createBranch.toolTip = "Create new branch."
+                self.ui.createBranch.text = "Create New Branch"
+                self.ui.createBranch.toolTip = "Create New Branch."
         else:
             self.ui.createBranch.toolTip = "Select all input before creating branch."
             self.ui.createBranch.enabled = False
@@ -277,13 +285,13 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         if len(self.graph_branches.names) != 0:
             self.ui.clearTree.toolTip = "Clear all tree."
             self.ui.clearTree.enabled = True
-            self.ui.saveTree.toolTip = "Save graph tree."
-            self.ui.saveTree.enabled = True
+            self.ui.exportTreeButton.toolTip = "Export the network X graph of the centerlines and contour points as JSON and pickle."
+            self.ui.exportTreeButton.enabled = True
         else:
             self.ui.clearTree.toolTip = "Tree is already empty."
             self.ui.clearTree.enabled = False
-            self.ui.saveTree.toolTip = "There is nothing to save."
-            self.ui.saveTree.enabled = False
+            self.ui.exportTreeButton.toolTip = "There is nothing to save."
+            self.ui.exportTreeButton.enabled = False
 
     def checkCanPlacePoint(self, *args):
         self.ui.placePointButton.enabled = self._parameterNode.startingPoint and self._parameterNode.directionPoint
@@ -344,7 +352,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
             return
 
         self.isPlacingPoints = False
-        self.ui.createBranch.enabled = True
+        self._checkCanApply()
 
         starting_point = self._parameterNode.startingPoint
         self._removeObserver(starting_point, vtkMRMLMarkupsNode.PointPositionDefinedEvent , self.directionPointPlacement)
@@ -357,6 +365,12 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         if self.startingPointPlaced and not self.directionPointPlaced:
             starting_point.RemoveNthControlPoint(starting_point.GetNumberOfControlPoints() - 1)
 
+        while starting_point.GetNumberOfControlPoints() >= 2:
+            starting_point.RemoveNthControlPoint(0)
+
+        while direction_point.GetNumberOfControlPoints() >= 2:
+            direction_point.RemoveNthControlPoint(0)
+
         self.startingPointPlaced = False
         self.directionPointPlaced = False
 
@@ -364,7 +378,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         with (slicer.util.tryWithErrorDisplay("Failed to compute segmentation.", waitCursor=True)):
             progress_dialog = CustomStatusDialog(windowTitle="Computing centerline...", text="Please wait", width=300, height=50)
             self.graph_branches = self.logic.processBranch(self._getParametersRansac(), self.graph_branches,
-                                                           self.ui.createBranch.text == "Create new branch", progress_dialog)
+                                                           self.ui.createBranch.text == "Create New Branch", progress_dialog)
 
             # Recenter the 3D view
             layoutManager = slicer.app.layoutManager()
@@ -496,13 +510,13 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         paintButton.enabled = len(self.graph_branches.centers_line_markups) != 0 and self._parameterNode.inputVolume
 
         if self.segmentationNode is None or self.segmentationNode.GetScene() is None:
-            paintButton.text = "Create segmentation from branches"
+            paintButton.text = "Create Segmentation from Branches"
             self.segmentationNode = None
             if self.nodeDeletionObserverTag is not None:
                 slicer.mrmlScene.RemoveObserver(self.nodeDeletionObserverTag)
                 self.nodeDeletionObserverTag = None
         else:
-            paintButton.text = "Update segmentation from branches"
+            paintButton.text = "Update Segmentation from Branches"
 
     def onStartSegmentationButton(self) -> None:
         with slicer.util.tryWithErrorDisplay("Failed to compute segmentation.", waitCursor=True):
@@ -535,9 +549,9 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
             for branch in self.graph_branches.centers_line_markups + self.graph_branches.contour_points_markups:
                 branch.GetDisplayNode().SetVisibility(False)
 
-            for icon in self.graph_branches.tree_widget._branchDict.values():
-                icon.setIcon(TreeColumnRole.VISIBILITY_CENTER, Icons.visibleOff)
-                icon.setIcon(TreeColumnRole.VISIBILITY_CONTOUR, Icons.visibleOff)
+            for branch in self.graph_branches.tree_widget._branchDict.values():
+                branch.setIcon(TreeColumnRole.VISIBILITY_CENTER, Icons.visibleOff)
+                branch.setIcon(TreeColumnRole.VISIBILITY_CONTOUR, Icons.visibleOff)
             self._parameterNode.startingPoint.GetDisplayNode().SetVisibility(False)
             self._parameterNode.directionPoint.GetDisplayNode().SetVisibility(False)
 
@@ -560,22 +574,46 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
             for markup in markups:
                 markup.LockedOff()
 
-    def onShowButton(self) -> None:
-        button = self.ui.showButton
-        markups = self.graph_branches.centers_line_markups
-        if button.text == "Hide centerlines":
-            button.text = "Show centerlines"
-            for markup in markups:
-                markup.GetDisplayNode().SetVisibility(False)
-            for icon in self.graph_branches.tree_widget._branchDict.values():
-                icon.setIcon(TreeColumnRole.VISIBILITY_CENTER, Icons.visibleOff)
-        else:
-            button.text = "Hide centerlines"
-            for markup in markups:
-                markup.GetDisplayNode().SetVisibility(True)
-            for icon in self.graph_branches.tree_widget._branchDict.values():
-                icon.setIcon(TreeColumnRole.VISIBILITY_CENTER, Icons.visibleOn)
+    def onLoadTreeArchitecture(self) -> None:
+        dialog = qt.QFileDialog()
+        file_path = dialog.getOpenFileName(None, "Choose a file", "", "JSON file (*.json)")
 
+        # cancel any action if the user cancel / close the window / press escape
+        if not file_path:
+            return
+
+        with (slicer.util.tryWithErrorDisplay("Failed to load tree architecture.", waitCursor=False)):
+            with open(file_path) as f:
+                js_graph = json.load(f)
+            graph : nx.Graph = json_graph.node_link_graph(js_graph)
+
+            if not self.graph_branches.clear_all():
+                return
+
+        with (slicer.util.tryWithErrorDisplay("Failed to restore tree architecture.", waitCursor=True)):
+            # Restoring lists
+            edge_name_table = {0: None}
+            for a, b in graph.edges:
+                self.graph_branches.branch_list.append([cylinder(center=np.array(cp)) for cp in graph[a][b]["center_line"]])
+                self.graph_branches.names.append(graph[a][b]["name"])
+                self.graph_branches.centers_lines.append(np.array(graph[a][b]["center_line"]))
+                self.graph_branches.contours_points.append(graph[a][b]["contour_points"])
+                # Recompute radius
+                self.graph_branches.centers_line_radius.append([np.linalg.norm(np.array(graph[a][b]["contour_points"][k]) - np.array(graph[a][b]["center_line"][k]), axis=1).min() for k in range(len(graph[a][b]["center_line"]))])
+                self.graph_branches.edges.append((a, b))
+                self.graph_branches.create_new_markups(graph[a][b]["name"], np.array(graph[a][b]["center_line"]), graph[a][b]["contour_points"])
+                edge_name_table[b] = graph[a][b]["name"]
+
+
+            for node in graph.nodes(data=True):
+                self.graph_branches.nodes.append(node[1]["pos"])
+
+            for a, b in nx.edge_dfs(graph):
+                current_edge_name = graph[a][b]["name"]
+                parent_edge_name = edge_name_table[a]
+                self.graph_branches.tree_widget.insertAfterNode(nodeId=current_edge_name, parentNodeId=parent_edge_name)
+            self._checkCanApply()
+            self.updateSegmentationButtonState()
 
 #
 # pulmonary_arteries_segmentor_moduleLogic

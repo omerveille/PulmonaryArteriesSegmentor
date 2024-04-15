@@ -10,9 +10,6 @@
     <height>763</height>
    </rect>
   </property>
-  <property name="toolTip">
-   <string>Start a new placing phase for starting and direction points.</string>
-  </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
     <widget class="QTabWidget" name="tabWidget">
@@ -73,14 +70,14 @@
           <item row="1" column="0">
            <widget class="QLabel" name="label_2">
             <property name="text">
-             <string>Starting point list</string>
+             <string>Starting Point List</string>
             </property>
            </widget>
           </item>
           <item row="2" column="0">
            <widget class="QLabel" name="label_3">
             <property name="text">
-             <string>Direction point list</string>
+             <string>Direction Point List</string>
             </property>
            </widget>
           </item>
@@ -168,7 +165,7 @@
           <item row="1" column="0">
            <widget class="QLabel" name="inlierPointsLabel">
             <property name="text">
-             <string>Inlier points (%)</string>
+             <string>Inlier Points (%)</string>
             </property>
            </widget>
           </item>
@@ -214,7 +211,7 @@
           <item row="3" column="0">
            <widget class="QLabel" name="startingRadiusLabel">
             <property name="text">
-             <string>Starting radius (mm)</string>
+             <string>Starting Radius (mm)</string>
             </property>
            </widget>
           </item>
@@ -239,6 +236,9 @@
             <property name="enabled">
              <bool>false</bool>
             </property>
+            <property name="toolTip">
+             <string>Start a new placing phase for starting and direction points.</string>
+            </property>
             <property name="text">
              <string>Place a new starting and direction point</string>
             </property>
@@ -253,30 +253,40 @@
           <bool>true</bool>
          </property>
          <property name="toolTip">
-          <string>Create the root branch or add a new branch.</string>
+          <string>Create Root.</string>
          </property>
          <property name="text">
-          <string>Create root</string>
+          <string>Create Root</string>
          </property>
         </widget>
        </item>
        <item>
-        <widget class="QPushButton" name="saveTree">
+        <widget class="QPushButton" name="exportTreeButton">
          <property name="toolTip">
-          <string>Save the network X graph of the segmentation as JSON and pickle.</string>
+          <string>Export the network X graph of the centerlines and contour points as JSON and pickle.</string>
          </property>
          <property name="text">
-          <string>Save tree</string>
+          <string>Export Tree as Graph</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="loadTreeArchitectureButton">
+         <property name="toolTip">
+          <string>Load a tree architecture from a directory.</string>
+         </property>
+         <property name="text">
+          <string>Load Tree Architecture</string>
          </property>
         </widget>
        </item>
        <item>
         <widget class="QPushButton" name="clearTree">
          <property name="toolTip">
-          <string>Clear the branch architecture.</string>
+          <string>Tree is already empty.</string>
          </property>
          <property name="text">
-          <string>Clear tree</string>
+          <string>Clear Tree</string>
          </property>
         </widget>
        </item>
@@ -285,7 +295,7 @@
          <item row="0" column="0">
           <widget class="QLabel" name="label_4">
            <property name="text">
-            <string>Curve text size</string>
+            <string>Curve Text Size</string>
            </property>
           </widget>
          </item>
@@ -315,6 +325,9 @@
        </item>
        <item>
         <widget class="QPushButton" name="lockButton">
+         <property name="toolTip">
+          <string>Disable / enable interractions with the whole tree.</string>
+         </property>
          <property name="text">
           <string>Lock Tree</string>
          </property>
@@ -324,15 +337,25 @@
         </widget>
        </item>
        <item>
-        <widget class="QPushButton" name="showButton">
+        <widget class="QPushButton" name="showCenterlineButton">
          <property name="enabled">
           <bool>true</bool>
          </property>
+         <property name="toolTip">
+          <string>Hide / show all the centerlines.</string>
+         </property>
          <property name="text">
-          <string>Hide centerlines</string>
+          <string>Hide Centerlines</string>
          </property>
          <property name="checkable">
           <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="showContourPointsButton">
+         <property name="text">
+          <string>Show Contour Points</string>
          </property>
         </widget>
        </item>
@@ -371,7 +394,7 @@
           <string>Create or update a segmentation node. It needs input volume and a branch.</string>
          </property>
          <property name="text">
-          <string>Create segmentation from branches</string>
+          <string>Create Segmentation from Branches</string>
          </property>
         </widget>
        </item>
