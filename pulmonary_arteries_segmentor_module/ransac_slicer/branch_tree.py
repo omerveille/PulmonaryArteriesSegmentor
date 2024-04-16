@@ -47,6 +47,11 @@ class BranchTree(qt.QTreeWidget):
     self.setContextMenuPolicy(qt.Qt.CustomContextMenu)
     self.customContextMenuRequested.connect(self.onContextMenu)
     self.itemChanged.connect(self.onItemChange)
+
+    # Only enable renaming if the column index double clicked is 0
+    self.editTriggers = self.NoEditTriggers
+    self.itemDoubleClicked.connect(lambda item, columnIdx : self.renameItem() if columnIdx == 0 else None)
+
     self.itemRenamed = Signal(str, str)
     self.itemDropped = Signal()
     self.itemRemoveEnd = Signal("VesselBranchTreeItem")

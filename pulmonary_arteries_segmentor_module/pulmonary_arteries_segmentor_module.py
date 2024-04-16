@@ -11,6 +11,7 @@ import vtk
 import json
 from networkx.readwrite import json_graph
 import networkx as nx
+import skimage
 
 from slicer import (vtkMRMLScalarVolumeNode, vtkMRMLMarkupsFiducialNode)
 from slicer.ScriptedLoadableModule import (ScriptedLoadableModuleWidget, ScriptedLoadableModuleLogic,
@@ -33,7 +34,7 @@ from ransac_slicer.cylinder import cylinder
 from ransac_slicer.ransac import run_ransac
 from ransac_slicer.graph_branches import GraphBranches
 from ransac_slicer.branch_tree import BranchTree, TreeColumnRole, Icons
-from ransac_slicer.color_palettes import colors_float
+from ransac_slicer.color_palettes import colors_float, direction_points_color
 from ransac_slicer import make_custom_progress_bar, CustomStatusDialog
 from ransac_slicer.volume import volume
 
@@ -156,7 +157,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         self.addObserver(slicer.mrmlScene, slicer.mrmlScene.EndCloseEvent, self.onSceneEndClose)
 
         # Sliders
-        self.ui.curveTextSize.connect('valueChanged(double)', self.changeTextSize)
+        self.ui.centerlineTextSize.connect('valueChanged(double)', self.changeTextSize)
 
         # Buttons
         self.ui.placePointButton.connect('clicked(bool)', self.startPlacePointProcedure)
@@ -310,6 +311,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         self.ui.createBranch.enabled = False
 
         starting_point = self._parameterNode.startingPoint
+        starting_point.GetDisplayNode().SetSelectedColor(*direction_points_color)
 
         # Prepare the case where the user place the first point
         self._addObserver(starting_point, vtkMRMLMarkupsNode.PointPositionDefinedEvent , self.directionPointPlacement)
@@ -332,6 +334,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         self._removeObserver(starting_point, vtkMRMLMarkupsNode.PointRemovedEvent, self.resetPlacementState)
 
         direction_point = self._parameterNode.directionPoint
+        direction_point.GetDisplayNode().SetSelectedColor(*direction_points_color)
 
         self._addObserver(direction_point, vtkMRMLMarkupsNode.PointPositionDefinedEvent , self.validate_last_point)
         self._addObserver(direction_point, vtkMRMLMarkupsNode.PointRemovedEvent, self.resetPlacementState)
@@ -374,17 +377,20 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         self.startingPointPlaced = False
         self.directionPointPlaced = False
 
+    def recenter3dView(self) -> None:
+        # Recenter the 3D view
+        layoutManager = slicer.app.layoutManager()
+        threeDWidget = layoutManager.threeDWidget(0)
+        threeDView = threeDWidget.threeDView()
+        threeDView.resetFocalPoint()
+
     def create_branch(self) -> None:
         with (slicer.util.tryWithErrorDisplay("Failed to compute segmentation.", waitCursor=True)):
             progress_dialog = CustomStatusDialog(windowTitle="Computing centerline...", text="Please wait", width=300, height=50)
             self.graph_branches = self.logic.processBranch(self._getParametersRansac(), self.graph_branches,
                                                            self.ui.createBranch.text == "Create New Branch", progress_dialog)
 
-            # Recenter the 3D view
-            layoutManager = slicer.app.layoutManager()
-            threeDWidget = layoutManager.threeDWidget(0)
-            threeDView = threeDWidget.threeDView()
-            threeDView.resetFocalPoint()
+            self.recenter3dView()
 
             # Select the starting markup node to ease future node placement
             slicer.app.applicationLogic().GetSelectionNode().SetActivePlaceNodeID(self._parameterNode.startingPoint.GetID())
@@ -466,8 +472,6 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
                                                                           binaryLabelmap,
                                                                           self._parameterNode.inputVolume)
 
-        import skimage
-
         numpy_labelmap_default = np.array(slicer.util.arrayFromVolume(binaryLabelmap) > 0, dtype=np.bool_)
         progress_dialog.setText("Computing the outer edge")
         slicer.app.processEvents()
@@ -495,14 +499,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         progress_dialog.close()
 
     def changeTextSize(self, value):
-        markups = self.graph_branches.centers_line_markups + self.graph_branches.contour_points_markups
-
-        if self._parameterNode.startingPoint:
-            markups += [self._parameterNode.startingPoint]
-        if self._parameterNode.directionPoint:
-            markups += [self._parameterNode.directionPoint]
-
-        for markup in markups:
+        for markup in self.graph_branches.centers_line_markups:
             markup.GetDisplayNode().SetTextScale(value)
 
     def updateSegmentationButtonState(self, *args):
@@ -614,6 +611,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
                 self.graph_branches.tree_widget.insertAfterNode(nodeId=current_edge_name, parentNodeId=parent_edge_name)
             self._checkCanApply()
             self.updateSegmentationButtonState()
+            self.recenter3dView()
 
 #
 # pulmonary_arteries_segmentor_moduleLogic

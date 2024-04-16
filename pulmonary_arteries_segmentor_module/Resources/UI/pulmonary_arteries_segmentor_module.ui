@@ -95,7 +95,7 @@
              <bool>false</bool>
             </property>
             <property name="baseName">
-             <string>Starting point list</string>
+             <string>s</string>
             </property>
             <property name="noneEnabled">
              <bool>true</bool>
@@ -131,7 +131,7 @@
              <bool>false</bool>
             </property>
             <property name="baseName">
-             <string>Direction point list</string>
+             <string>d</string>
             </property>
             <property name="noneEnabled">
              <bool>true</bool>
@@ -295,14 +295,14 @@
          <item row="0" column="0">
           <widget class="QLabel" name="label_4">
            <property name="text">
-            <string>Curve Text Size</string>
+            <string>Centerline Text Size</string>
            </property>
           </widget>
          </item>
          <item row="0" column="1">
-          <widget class="ctkSliderWidget" name="curveTextSize">
+          <widget class="ctkSliderWidget" name="centerlineTextSize">
            <property name="toolTip">
-            <string>Change the curves text size.</string>
+            <string>Changes the centerlines text size.</string>
            </property>
            <property name="singleStep">
             <double>0.100000000000000</double>

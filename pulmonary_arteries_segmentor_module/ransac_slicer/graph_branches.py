@@ -8,6 +8,7 @@ import qt
 import os
 from .cylinder import cylinder
 from .branch_tree import BranchTree, TreeColumnRole, Icons
+from .color_palettes import centerline_color, contour_points_color
 
 class GraphBranches():
     def __init__(self, tree_widget: BranchTree, centerline_button, contour_point_button, lock_button) -> None:
@@ -43,11 +44,13 @@ class GraphBranches():
 
         new_center_line.SetName(name+"_centers")
         new_center_line.AddObserver(slicer.vtkMRMLMarkupsNode.PointStartInteractionEvent , self.on_node_clicked)
+        new_center_line.GetDisplayNode().SetSelectedColor(*centerline_color)
 
         new_contour_points = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsFiducialNode")
         slicer.util.updateMarkupsControlPointsFromArray(new_contour_points, np.array([elt for pts in contour_points for elt in pts]))
         new_contour_points.GetDisplayNode().SetTextScale(0)
         new_contour_points.GetDisplayNode().SetVisibility(False)
+        new_contour_points.GetDisplayNode().SetSelectedColor(*contour_points_color)
         new_contour_points.SetName(name+"_contours")
 
         self.centers_line_markups.append(new_center_line)
@@ -247,9 +250,14 @@ class GraphBranches():
         displayNode = caller.GetDisplayNode()
         if displayNode.GetActiveComponentType() == slicer.vtkMRMLMarkupsDisplayNode.ComponentControlPoint:
             node_id = displayNode.GetActiveComponentIndex()
-            branch_name = caller.GetName()
-            branch_id = self.names.index(branch_name.split('_')[0])
+
+            branch_name = "_".join(caller.GetName().split('_')[:-1])
+            branch_id = self.names.index(branch_name)
             self.node_selected = (branch_id, node_id)
+
+            tree_item = self.tree_widget.getTreeWidgetItem(branch_name)
+            self.tree_widget.scrollToItem(tree_item)
+            self.tree_widget.setCurrentItem(tree_item)
 
     def on_remove_end(self, treeItem):
         node_id = treeItem.nodeId
@@ -281,20 +289,34 @@ class GraphBranches():
                 n2 -= 1
             self.edges[i] = n1, n2
 
-    def on_delete_item(self, treeItem):
+    def on_delete_item(self, treeItem, showPopupForNonLeaf=True):
         """
     Remove the item from the tree and hide the associated markup
     """
         self.on_stop_interaction()
         node_id = treeItem.nodeId
+
         if self.tree_widget.isRoot(node_id):
-            msg = qt.QMessageBox()
-            msg.setIcon(qt.QMessageBox.Critical)
-            msg.setWindowTitle("Error")
-            msg.setText("You can't delete the root")
-            msg.exec_()
+            slicer.util.errorDisplay(text="You can't delete the root", windowTitle="Error")
             return
+
+        children = [self.tree_widget.getTreeWidgetItem(n_id) for n_id in self.tree_widget.getChildrenNodeId(node_id)]
+
+        if len(children) != 0 and showPopupForNonLeaf:
+            msg = qt.QMessageBox()
+            msg.setIcon(qt.QMessageBox.Warning)
+            msg.setWindowTitle("Confirmation")
+            msg.setText(f"Are you sure you want to delete {node_id} and all its children ?")
+            msg.setStandardButtons(qt.QMessageBox.Yes | qt.QMessageBox.No)
+            if msg.exec_() != qt.QMessageBox.Yes:
+                return
+
+        for child in children:
+            self.on_delete_item(child, showPopupForNonLeaf=False)
+
         branch_id = self.names.index(node_id)
+        self.delete_node(self.edges[branch_id][1])
+
         self.names.pop(branch_id)
         self.branch_list.pop(branch_id)
         self.centers_lines.pop(branch_id)
@@ -303,17 +325,15 @@ class GraphBranches():
         slicer.mrmlScene.RemoveNode(self.centers_line_markups.pop(branch_id))
         slicer.mrmlScene.RemoveNode(self.contour_points_markups.pop(branch_id))
 
-        if self.tree_widget.isLeaf(node_id):
-            self.delete_node(self.edges[branch_id][1])
         self.edges.pop(branch_id)
-
         parent_id = self.tree_widget.getParentNodeId(node_id)
         self.tree_widget.removeNode(node_id)
 
         if self.current_tree_item == treeItem:
             self.current_tree_item = None
 
-        self.on_merge_only_child(parent_id)
+        if showPopupForNonLeaf:
+            self.on_merge_only_child(parent_id)
 
     def on_merge_only_child(self, node_id):
         if node_id is None:
