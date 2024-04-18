@@ -385,7 +385,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         threeDView.resetFocalPoint()
 
     def create_branch(self) -> None:
-        with (slicer.util.tryWithErrorDisplay("Failed to compute segmentation.", waitCursor=True)):
+        with (slicer.util.tryWithErrorDisplay("Failed to compute tracking.", waitCursor=True)):
             progress_dialog = CustomStatusDialog(windowTitle="Computing centerline...", text="Please wait", width=300, height=50)
             self.graph_branches = self.logic.processBranch(self._getParametersRansac(), self.graph_branches,
                                                            self.ui.createBranch.text == "Create New Branch", progress_dialog)
@@ -549,8 +549,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
             for branch in self.graph_branches.tree_widget._branchDict.values():
                 branch.setIcon(TreeColumnRole.VISIBILITY_CENTER, Icons.visibleOff)
                 branch.setIcon(TreeColumnRole.VISIBILITY_CONTOUR, Icons.visibleOff)
-            self._parameterNode.startingPoint.GetDisplayNode().SetVisibility(False)
-            self._parameterNode.directionPoint.GetDisplayNode().SetVisibility(False)
+            self.ui.showCenterlineButton.text = "Hide Centerlines"
 
             self.updateSegmentationButtonState()
 

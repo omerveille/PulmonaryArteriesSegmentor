@@ -192,7 +192,7 @@ class BranchTree(qt.QTreeWidget):
     else:
       self.takeTopLevelItem(self.indexOfTopLevelItem(nodeItem))
 
-  def _insertNode(self, nodeId, parentId):
+  def _insertNode(self, nodeId, parentId, becomeIntermediaryParent=False):
     """Insert the nodeId with input node name as child of the item whose name is parentId. If parentId is None, the item
     will be added as a root of the tree
 
@@ -215,13 +215,15 @@ class BranchTree(qt.QTreeWidget):
       children = self.getChildrenNodeId(parentId)
       self._branchDict[parentId].addChild(nodeItem)
       self._branchDict[nodeId] = nodeItem
-      if len(children) == 2:
-        for child in children:
-          self._insertNode(child, nodeId)
+
+      if becomeIntermediaryParent:
+        if len(children) >= 2:
+          for child in children:
+            self._insertNode(child, nodeId)
 
     return nodeItem
 
-  def insertAfterNode(self, nodeId, parentNodeId):
+  def insertAfterNode(self, nodeId, parentNodeId, becomeIntermediaryParent=False):
     """Insert given node after the input parent Id. Inserts new node as root if parentNodeId is None.
     If root is already present in the tree and insert after None is used, new node will become the parent of existing
     root node.
@@ -239,7 +241,7 @@ class BranchTree(qt.QTreeWidget):
       ValueError
         If parentNodeId is not None and doesn't exist in the tree
     """
-    self._insertNode(nodeId, parentNodeId)
+    self._insertNode(nodeId, parentNodeId, becomeIntermediaryParent=becomeIntermediaryParent)
     self.expandAll()
 
   def removeNode(self, nodeId):

@@ -72,20 +72,20 @@ class GraphBranches():
 
         self.edges.append(edge)
         new_name = "b"+str(len(self.edges))
-
         self.names.append(new_name)
         self.centers_lines.append(centers_line)
         self.contours_points.append(contour_points)
         self.centers_line_radius.append(center_line_radius)
 
         self.create_new_markups(new_name, centers_line, contour_points)
-        self.tree_widget.insertAfterNode(nodeId=new_name, parentNodeId=parent_node)
+
+        self.tree_widget.insertAfterNode(nodeId=new_name, parentNodeId=parent_node, becomeIntermediaryParent=isFromUpdate)
 
         if not isFromUpdate:
             self.on_merge_only_child(parent_node)
 
 
-    def update_graph(self, branch_id, node_id):
+    def update_parent_branch(self, branch_id, node_id):
         self.branch_list[branch_id] = self.branch_list[branch_id][:node_id]
         self.centers_lines[branch_id] = self.centers_lines[branch_id][:node_id]
         self.contours_points[branch_id] = self.contours_points[branch_id][:node_id]
@@ -107,7 +107,7 @@ class GraphBranches():
         centers_line = self.centers_lines[idx_cb]
         contour_points = self.contours_points[idx_cb]
         centers_line_radius = self.centers_line_radius[idx_cb]
-        self.update_graph(idx_cb, idx_cyl+1)
+        self.update_parent_branch(idx_cb, idx_cyl+1)
 
         # Update edges
         self.nodes.append(centers_line[idx_cyl])
@@ -277,7 +277,7 @@ class GraphBranches():
 
         edges_node_id = self.edges[branch_id][1]
         self.nodes[edges_node_id] = self.centers_lines[branch_id][branch_node_id]
-        self.update_graph(branch_id, branch_node_id+1)
+        self.update_parent_branch(branch_id, branch_node_id+1)
 
     def delete_node(self, index):
         self.nodes.pop(index)
