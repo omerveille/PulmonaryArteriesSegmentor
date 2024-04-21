@@ -24,7 +24,8 @@ colors = [
     [255, 120, 89],
 ]
 
-colors_float = [(np.array(color, dtype=float) / 255.0).tolist() for color in colors]
+vessel_colors = [(np.array(color, dtype=float) / 255.0).tolist() for color in colors]
+contour_color = [1., 215./255. ,0.]
 
 direction_points_color = (np.array([130, 255, 70], dtype=float) / 255.0).tolist()
 centerline_color = (np.array([139, 152, 255], dtype=float) / 255.0).tolist()

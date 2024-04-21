@@ -40,6 +40,7 @@ class CustomStatusDialog:
         label.setAlignment(qt.Qt.AlignCenter)
         layout.addWidget(label)
         dialog.setLayout(layout)
+
         dialog.show()
         slicer.app.processEvents()
 
@@ -47,6 +48,7 @@ class CustomStatusDialog:
         self.dialog = dialog
     def setText(self, text : str):
         self.label.setText(text)
+        slicer.app.processEvents()
 
     def close(self):
         self.dialog.close()

@@ -1,7 +1,6 @@
 import numpy as np
 import math
 
-import slicer
 
 from . import cylinder, helper
 
@@ -744,7 +743,6 @@ def track_branch(vol, cyl, cfg, centers_line, center_line_radius, contour_points
             contour_points_cpt += len(current_contour_points)
 
             progress_dialog.setText(f"Centerline points found: {centerline_cpt}\nContour points found: {contour_points_cpt}")
-            slicer.app.processEvents()
 
         else:
             break
