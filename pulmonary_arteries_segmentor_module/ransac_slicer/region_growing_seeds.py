@@ -7,6 +7,30 @@ import vtk
 import skimage
 from .color_palettes import vessel_colors, contour_color
 import time
+from datetime import timedelta
+
+class ProgressBarTimer:
+    def __init__(self, total):
+        self.total = total
+        self.count = 0
+
+    def __enter__(self):
+        self.start_time = time.time()
+        return self
+
+    def __exit__(self, type, value, traceback):
+        pass
+
+    @classmethod
+    def format_time(cls, seconds):
+        return str(timedelta(seconds=int(seconds)))
+
+    def update(self):
+        self.count += 1
+        elapsed_time = time.time() - self.start_time
+        remaining_time = (self.total - self.count) * (elapsed_time / self.count) if self.count > 0 else 0
+        return  elapsed_time, remaining_time
+
 
 def paint_segments(volume_node : slicer.vtkMRMLScalarVolumeNode, centerlines : list[np.ndarray], centerline_names : list[str], radius : list[list[float]], segmentation_node : slicer.vtkMRMLSegmentationNode) -> None:
     # Important variables
@@ -99,20 +123,25 @@ def place_contours_seeds(
     segmentationNode.GetDisplayNode().SetSegmentOpacity3D(segment_id.GetValue(0), 0.1)
 
     progress_bar = make_custom_progress_bar(labelText="Computing contours ...", windowTitle="Computing contours ...", width=250)
+    elapsed_time = 0
+
     time.sleep(0.25)
     slicer.app.processEvents()
+    with ProgressBarTimer(total=len(centerlines)) as progress_timer:
+        for idx in range(len(centerlines)):
+            center_x, center_y, center_z = centerlines[idx]
+            radius_x, radius_y, radius_z = radius[idx]
+            contours_tmp = (((x - center_x)**2 / radius_x**2 + (y - center_y)**2 / radius_y**2 + (z - center_z)**2 / radius_z**2) <= 1).astype(np.bool_)
 
-    for idx in range(len(centerlines)):
-        center_x, center_y, center_z = centerlines[idx]
-        radius_x, radius_y, radius_z = radius[idx]
-        contours_tmp = (((x - center_x)**2 / radius_x**2 + (y - center_y)**2 / radius_y**2 + (z - center_z)**2 / radius_z**2) <= 1).astype(np.bool_)
+            contours += contours_tmp
 
-        contours += contours_tmp
+            curr_elapsed_time, curr_remaining_time = progress_timer.update()
+            if curr_elapsed_time - elapsed_time > 1:
+                elapsed_time = curr_elapsed_time
+                progress_bar.value = math.floor(((idx + 1) / len(centerlines)) * 100)
+                progress_bar.labelText= f"Computing contours ...\nProgress: {progress_timer.count}/{progress_timer.total}\nElapsed time: {ProgressBarTimer.format_time(curr_elapsed_time)} Remaining time: {ProgressBarTimer.format_time(curr_remaining_time)}"
+                slicer.app.processEvents()
 
-        progress_value = math.floor(((idx + 1) / len(centerlines)) * 100)
-        if progress_value != progress_bar.value:
-            progress_bar.value = progress_value
-            slicer.app.processEvents()
 
     progress_bar.close()
 
