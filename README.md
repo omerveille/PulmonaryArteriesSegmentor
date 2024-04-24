@@ -35,7 +35,7 @@ To install the plugin, you have to do the following steps:
 3) Click on `Select Extension`, a folder tab will appear, select the repository folder / the zip folder you extracted, and click on `Choose`.
 4) A popup will show, select `Yes`.⚠️ Make sure you are connected to the internet. When loading the module, it will check if you have all the dependencies and attempt to download the missing ones. ⚠️
 5) After downloading the missing dependencies, the plugin can be found in the module drop-down menu, under the `Segmentation` category.
-   
+
 [install.webm](https://github.com/Leirbag-gabrieL/PulmonaryArteriesSegmentor/assets/91014653/34f93e8a-386e-4120-82c6-3b046f5a420b)
 
 Tips: If you struggle to find any of those modules, you can use the magnifying glass to search modules by name.

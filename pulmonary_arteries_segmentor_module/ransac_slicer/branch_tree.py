@@ -47,10 +47,16 @@ class BranchTree(qt.QTreeWidget):
     self.setContextMenuPolicy(qt.Qt.CustomContextMenu)
     self.customContextMenuRequested.connect(self.onContextMenu)
     self.itemChanged.connect(self.onItemChange)
+
+    # Only enable renaming if the column index double clicked is 0
+    self.editTriggers = self.NoEditTriggers
+    self.itemDoubleClicked.connect(lambda item, columnIdx : self.renameItem() if columnIdx == 0 else None)
+
     self.itemRenamed = Signal(str, str)
     self.itemDropped = Signal()
     self.itemRemoveEnd = Signal("VesselBranchTreeItem")
     self.itemDeleted = Signal("VesselBranchTreeItem")
+    self.headerClicked = Signal(int)
 
     self._branchDict = {}
 
@@ -69,21 +75,13 @@ class BranchTree(qt.QTreeWidget):
     self.headerItem().setIcon(TreeColumnRole.VISIBILITY_CONTOUR, Icons.toggleVisibility)
     self.headerItem().setIcon(TreeColumnRole.DELETE, Icons.delete)
 
-    # Enable reordering by drag and drop
-    self.setDragEnabled(False)
-    self.setDropIndicatorShown(True)
-    self.setDragDropMode(qt.QAbstractItemView.InternalMove)
-    self.setAccessibleName("branch_tree")
+    # Enable clicking on headers
+    self.header().setSectionsClickable(True)
+    self.header().sectionClicked.connect(self.onHeaderClicked)
 
   def clear(self):
     self._branchDict = {}
     qt.QTreeWidget.clear(self)
-
-  def clickItem(self, item):
-    item = self.getTreeWidgetItem(item) if isinstance(item, str) else item
-    self.setItemSelected(item)
-    if item is not None:
-      self.itemClicked.emit(item, 0)
 
   def setItemSelected(self, item):
     if item is not None:
@@ -166,6 +164,9 @@ class BranchTree(qt.QTreeWidget):
     item.updateText()
     self.itemRenamed.emit(previous, new)
 
+  def onHeaderClicked(self, column):
+      self.headerClicked.emit(column)
+
   def renameItem(self):
     item: BranchTreeItem = self.currentItem()
     self.editItem(item, 0)
@@ -191,7 +192,7 @@ class BranchTree(qt.QTreeWidget):
     else:
       self.takeTopLevelItem(self.indexOfTopLevelItem(nodeItem))
 
-  def _insertNode(self, nodeId, parentId):
+  def _insertNode(self, nodeId, parentId, becomeIntermediaryParent=False):
     """Insert the nodeId with input node name as child of the item whose name is parentId. If parentId is None, the item
     will be added as a root of the tree
 
@@ -214,13 +215,15 @@ class BranchTree(qt.QTreeWidget):
       children = self.getChildrenNodeId(parentId)
       self._branchDict[parentId].addChild(nodeItem)
       self._branchDict[nodeId] = nodeItem
-      if len(children) == 2:
-        for child in children:
-          self._insertNode(child, nodeId)
+
+      if becomeIntermediaryParent:
+        if len(children) >= 2:
+          for child in children:
+            self._insertNode(child, nodeId)
 
     return nodeItem
 
-  def insertAfterNode(self, nodeId, parentNodeId):
+  def insertAfterNode(self, nodeId, parentNodeId, becomeIntermediaryParent=False):
     """Insert given node after the input parent Id. Inserts new node as root if parentNodeId is None.
     If root is already present in the tree and insert after None is used, new node will become the parent of existing
     root node.
@@ -238,7 +241,7 @@ class BranchTree(qt.QTreeWidget):
       ValueError
         If parentNodeId is not None and doesn't exist in the tree
     """
-    self._insertNode(nodeId, parentNodeId)
+    self._insertNode(nodeId, parentNodeId, becomeIntermediaryParent=becomeIntermediaryParent)
     self.expandAll()
 
   def removeNode(self, nodeId):
