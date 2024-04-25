@@ -1,6 +1,5 @@
-import math
 import skimage.morphology
-from . import make_custom_progress_bar, CustomStatusDialog
+from . import CustomStatusDialog
 import slicer
 import numpy as np
 import vtk
@@ -31,8 +30,46 @@ class ProgressBarTimer:
         remaining_time = (self.total - self.count) * (elapsed_time / self.count) if self.count > 0 else 0
         return  elapsed_time, remaining_time
 
+def update_segment(
+    segment_id: str,
+    labelmap_node: slicer.vtkMRMLSegmentationNode,
+    data: np.ndarray,
+    segmentation_node: slicer.vtkMRMLLabelMapVolumeNode,
+):
+    vtk_segment_id = vtk.vtkStringArray()
+    vtk_segment_id.InsertNextValue(segment_id)
 
-def paint_segments(volume_node : slicer.vtkMRMLScalarVolumeNode, centerlines : list[np.ndarray], centerline_names : list[str], radius : list[list[float]], segmentation_node : slicer.vtkMRMLSegmentationNode) -> None:
+    slicer.util.updateVolumeFromArray(labelmap_node, data)
+    slicer.modules.segmentations.logic().ImportLabelmapToSegmentationNode(labelmap_node, segmentation_node, vtk_segment_id)
+
+def compute_bbox(centerline_points: list[np.ndarray], radius: list[np.ndarray], lower_bound : np.ndarray, dimensions: np.ndarray):
+
+    centerline_points = np.array(centerline_points)
+    radius = np.array(radius)
+
+    min_point = np.maximum(np.floor(np.min(centerline_points - radius, axis=0)).astype(int), lower_bound)
+    max_point = np.minimum(np.ceil(np.max(centerline_points + radius, axis=0)).astype(int), dimensions)
+
+    return min_point, max_point
+
+def adapt_radius(x: float, reduction_threshold : float, reduction_factor : float) -> float:
+    return x if x <= reduction_threshold else (x - reduction_threshold) * reduction_factor + reduction_threshold
+
+def split_list(lst, n):
+    for i in range(0, len(lst), n):
+        yield lst[i:i + n]
+
+def paint_segments(
+    volume_node: slicer.vtkMRMLScalarVolumeNode,
+    centerlines: list[np.ndarray],
+    centerline_names: list[str],
+    radius: list[list[float]],
+    segmentation_node: slicer.vtkMRMLSegmentationNode,
+    reduction_factor : float,
+    reduction_threshold : float,
+    contour_distance : int,
+) -> None:
+
     # Important variables
     voxel_spacing = np.array(volume_node.GetSpacing()[::-1])
     volume_dimensions = np.array(volume_node.GetImageData().GetDimensions()[::-1])
@@ -64,98 +101,72 @@ def paint_segments(volume_node : slicer.vtkMRMLScalarVolumeNode, centerlines : l
     labelmap_node.GetImageData().AllocateScalars(vtk.VTK_UNSIGNED_CHAR, 1)
 
     # Transform ras coordinates (real world coordinates) into ijk coordinates (voxel coordinates)
-    centerlines = [[(np_ras_to_ijk @ np.array([*point, 1]))[-2::-1] for point in centerline] for centerline in centerlines]
+    centerlines = [[[(np_ras_to_ijk @ np.array([*point, 1]))[-2::-1] for point in list_part] for list_part in split_list(centerline, 2)] for centerline in centerlines]
+    radius = [list(split_list(radius_list, 2)) for radius_list in radius]
 
-    centerlines_seeds_np_array, centerline_segment_ids = place_centerlines_seeds(centerlines, centerline_names, segmentation, volume_dimensions)
-    contour_seed_np_array, contour_segment_id = place_contours_seeds(centerlines_seeds_np_array, centerlines, radius, voxel_spacing, segmentation_node, segmentation)
-
-    slicer.util.updateVolumeFromArray(labelmap_node, centerlines_seeds_np_array)
-    slicer.modules.segmentations.logic().ImportLabelmapToSegmentationNode(labelmap_node, segmentation_node, centerline_segment_ids)
-
-    slicer.util.updateVolumeFromArray(labelmap_node, contour_seed_np_array)
-    slicer.modules.segmentations.logic().ImportLabelmapToSegmentationNode(labelmap_node, segmentation_node, contour_segment_id)
-
-    slicer.mrmlScene.RemoveNode(labelmap_node)
-
-def place_centerlines_seeds(
-        centerlines : list[list[np.ndarray]],
-        centerline_names : list[str],
-        segmentation : slicer.vtkSegmentation,
-        volume_dimensions : np.ndarray
-    ) -> None:
-
-    segment_ids = vtk.vtkStringArray()
-
-    max_values = np.array(volume_dimensions, dtype=int) - 1
-    min_values = [0, 0, 0]
-    numpy_label_map = np.zeros(shape=volume_dimensions, dtype=np.uint8)
-
-    for centerline_idx in range(len(centerlines)):
-        segment_ids.InsertNextValue(segmentation.AddEmptySegment("", centerline_names[centerline_idx], vessel_colors[centerline_idx % len(vessel_colors)]))
-        for point in centerlines[centerline_idx]:
-            # Clamps the the pixel coordinates to make sure it's inside the volume
-            ijk_closest_point = np.maximum(np.minimum([round(coord) for coord in point], max_values, dtype=int), min_values, dtype=int)
-            numpy_label_map[ijk_closest_point[0], ijk_closest_point[1], ijk_closest_point[2]] = centerline_idx + 1
-
-    return numpy_label_map, segment_ids
-
-def place_contours_seeds(
-    centerline_seeds: np.ndarray,
-    centerlines: list[list[float, float, float]],
-    radius: list[float],
-    spacing: list[float, float, float],
-    segmentationNode: slicer.vtkMRMLSegmentationNode,
-    segmentation: slicer.vtkSegmentation
-) -> np.ndarray:
-
-    contours = (centerline_seeds > 0).astype(np.bool_)
-    x, y, z = np.indices(contours.shape)
-
-    # Unwrapping to ease loading bar
-    centerlines = [point for centerline in centerlines for point in centerline]
-    radius = [radius_per_point for radius_list in radius for radius_per_point in radius_list]
-
-    # Radius modified with spacing in case of non-isotropic volume
-    radius = [np.array([r, r, r]) / spacing for r in radius]
-
-    segment_id = vtk.vtkStringArray()
-    segment_id.InsertNextValue(segmentation.AddEmptySegment("", "Contours", contour_color))
-    segmentationNode.GetDisplayNode().SetSegmentOpacity3D(segment_id.GetValue(0), 0.1)
-
-    progress_bar = make_custom_progress_bar(labelText="Computing contours ...", windowTitle="Computing contours ...", width=250)
-    elapsed_time = 0
-
-    time.sleep(0.25)
-    slicer.app.processEvents()
-    with ProgressBarTimer(total=len(centerlines)) as progress_timer:
-        for idx in range(len(centerlines)):
-            center_x, center_y, center_z = centerlines[idx]
-            radius_x, radius_y, radius_z = radius[idx]
-            contours_tmp = (((x - center_x)**2 / radius_x**2 + (y - center_y)**2 / radius_y**2 + (z - center_z)**2 / radius_z**2) <= 1).astype(np.bool_)
-
-            contours += contours_tmp
-
-            curr_elapsed_time, curr_remaining_time = progress_timer.update()
-            if curr_elapsed_time - elapsed_time > 1:
-                elapsed_time = curr_elapsed_time
-                progress_bar.value = math.floor(((idx + 1) / len(centerlines)) * 100)
-                progress_bar.labelText= f"Computing contours ...\nProgress: {progress_timer.count}/{progress_timer.total}\nElapsed time: {ProgressBarTimer.format_time(curr_elapsed_time)} Remaining time: {ProgressBarTimer.format_time(curr_remaining_time)}"
-                slicer.app.processEvents()
+    # Constants
+    x, y, z = np.indices(volume_dimensions)
+    low_bound = np.array([0, 0, 0], dtype=int)
+    high_bound = volume_dimensions - 1
 
 
-    progress_bar.close()
+    # Paint centerlines
+    treated_radius = [[[np.array([adapt_radius(r, reduction_threshold, reduction_factor)] * 3) / voxel_spacing for r in radius_part] for radius_part in radius_per_centerline] for radius_per_centerline in radius]
+    contour_map = np.zeros(volume_dimensions, dtype=np.bool_)
+
+    for centerline_idx, (centerline, radius_per_centerline, centerline_name) in enumerate(zip(centerlines, treated_radius, centerline_names)):
+        segment_map = np.zeros(volume_dimensions, dtype=np.bool_)
+        for (points, points_radius) in zip(centerline, radius_per_centerline):
+            lower_edge, highter_edge = compute_bbox(points, points_radius, low_bound, volume_dimensions)
+            for (point, radius_) in zip(points, points_radius):
+                center_x, center_y, center_z = point
+                radius_x, radius_y, radius_z = radius_
+
+                sphere_map = (((x[lower_edge[0]:highter_edge[0], lower_edge[1]:highter_edge[1], lower_edge[2]:highter_edge[2]] - center_x)**2 / radius_x**2 + (y[lower_edge[0]:highter_edge[0], lower_edge[1]:highter_edge[1], lower_edge[2]:highter_edge[2]]  - center_y)**2 / radius_y**2 + (z[lower_edge[0]:highter_edge[0], lower_edge[1]:highter_edge[1], lower_edge[2]:highter_edge[2]] - center_z)**2 / radius_z**2) <= 1).astype(np.bool_)
+                closest_pixel_to_paint = np.maximum(np.minimum([round(coord) for coord in point], high_bound, dtype=int), low_bound, dtype=int)
+
+                segment_map[closest_pixel_to_paint[0], closest_pixel_to_paint[1], closest_pixel_to_paint[2]] = True
+                segment_map[lower_edge[0]:highter_edge[0], lower_edge[1]:highter_edge[1], lower_edge[2]:highter_edge[2]] += sphere_map
+                contour_map[lower_edge[0]:highter_edge[0], lower_edge[1]:highter_edge[1], lower_edge[2]:highter_edge[2]] += sphere_map
+
+        segment_id = segmentation.AddEmptySegment("", centerline_name, vessel_colors[centerline_idx % len(vessel_colors)])
+        update_segment(segment_id, labelmap_node, segment_map.astype(np.uint8), segmentation_node)
+
+    del segment_map
+    del treated_radius
+
+    # Paint contours
+
+    # Filtering point that have not been shrunk
+    centerline_and_radius = [[centerline_part, [np.array([r] * 3) / voxel_spacing for r in radius_part]] for (centerline, radius_per_centerline) in zip(centerlines, radius) for (centerline_part, radius_part) in zip(centerline, radius_per_centerline) if any(map(lambda x: x > reduction_threshold, radius_part))]
+
+    for (points, points_radius) in centerline_and_radius:
+        lower_edge, highter_edge = compute_bbox(points, points_radius, low_bound, volume_dimensions)
+        for (point, radius_) in zip(points, points_radius):
+
+            center_x, center_y, center_z = point
+            radius_x, radius_y, radius_z = radius_
+
+            sphere_map = (((x[lower_edge[0]:highter_edge[0], lower_edge[1]:highter_edge[1], lower_edge[2]:highter_edge[2]] - center_x)**2 / radius_x**2 + (y[lower_edge[0]:highter_edge[0], lower_edge[1]:highter_edge[1], lower_edge[2]:highter_edge[2]]  - center_y)**2 / radius_y**2 + (z[lower_edge[0]:highter_edge[0], lower_edge[1]:highter_edge[1], lower_edge[2]:highter_edge[2]] - center_z)**2 / radius_z**2) <= 1).astype(np.bool_)
+            contour_map[lower_edge[0]:highter_edge[0], lower_edge[1]:highter_edge[1], lower_edge[2]:highter_edge[2]] += sphere_map
 
     progress_dialog = CustomStatusDialog(windowTitle="Computing contours ...", text="Please wait", width=300, height=50)
-    time.sleep(0.25)
+    # Timer added to let the interface load
+    time.sleep(0.1)
 
     # Outter edge
     progress_dialog.setText("Computing the outter edge ...")
-    contours_ball_6 = skimage.morphology.binary_dilation(contours, skimage.morphology.ball(radius=6))
+    contours_dilated = skimage.morphology.binary_dilation(contour_map, skimage.morphology.ball(radius=contour_distance + 2))
 
     # Inner edge
     progress_dialog.setText("Computing the inner edge ...")
-    contours_ball_6[skimage.morphology.binary_dilation(contours, skimage.morphology.ball(radius=4))] = False
+    contours_dilated[skimage.morphology.binary_dilation(contour_map, skimage.morphology.ball(radius=contour_distance))] = False
+    del contour_map
 
-    progress_dialog.setText("Processing done !")
     progress_dialog.close()
-    return contours_ball_6.astype(np.uint8), segment_id
+
+    segment_id = segmentation.AddEmptySegment("", "Contour", contour_color)
+    segmentation_node.GetDisplayNode().SetSegmentOpacity3D(segment_id, 0.1)
+    update_segment(segment_id, labelmap_node, contours_dilated.astype(np.uint8), segmentation_node)
+
+    slicer.mrmlScene.RemoveNode(labelmap_node)

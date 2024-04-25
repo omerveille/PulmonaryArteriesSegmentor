@@ -407,13 +407,10 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
         paintButton.enabled = len(self.graph_branches.centers_line_markups) != 0 and self._parameterNode.inputVolume
 
         if self.segmentationNode is None or self.segmentationNode.GetScene() is None:
-            paintButton.text = "Create Segmentation from Branches"
             self.segmentationNode = None
             if self.nodeDeletionObserverTag is not None:
                 slicer.mrmlScene.RemoveObserver(self.nodeDeletionObserverTag)
                 self.nodeDeletionObserverTag = None
-        else:
-            paintButton.text = "Update Segmentation from Branches"
 
     def onStartSegmentationButton(self) -> None:
         with slicer.util.tryWithErrorDisplay("Failed to compute segmentation.", waitCursor=True):
@@ -423,7 +420,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
                     slicer.vtkMRMLScene.NodeAboutToBeRemovedEvent, self.updateSegmentationButtonState)
                 self.segmentationNode.SetReferenceImageGeometryParameterFromVolumeNode(self._parameterNode.inputVolume)
 
-                self.segmentationNode.SetName("Lung Segmentation")
+                self.segmentationNode.SetName("Segmentation")
                 self.segmentationNode.CreateDefaultDisplayNodes()
 
             # We do pause the tracking of segmentation deletion
@@ -431,7 +428,16 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
             self.nodeDeletionObserverTag = None
 
             # Create the segments and paint them
-            paint_segments(self._parameterNode.inputVolume, self.graph_branches.centers_lines, self.graph_branches.names, self.graph_branches.centers_line_radius, self.segmentationNode)
+            paint_segments(
+                self._parameterNode.inputVolume,
+                self.graph_branches.centers_lines,
+                self.graph_branches.names,
+                self.graph_branches.centers_line_radius,
+                self.segmentationNode,
+                self.ui.reductionFactorSlider.value,
+                self.ui.reductionThreshold.value,
+                self.ui.contourSpinbox.value,
+            )
 
             # Make the segmentation visible
             if not self.segmentationNode.GetSegmentation().ContainsRepresentation("Closed surface"):
