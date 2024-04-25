@@ -52,8 +52,8 @@ def compute_bbox(centerline_points: list[np.ndarray], radius: list[np.ndarray], 
 
     return min_point, max_point
 
-def adapt_radius(x: float, reduction_threshold : float, reduction_factor : float) -> float:
-    return x if x <= reduction_threshold else (x - reduction_threshold) * reduction_factor + reduction_threshold
+def adapt_radius(radius: float, reduction_threshold : float, reduction_factor : float) -> float:
+    return radius if radius <= reduction_threshold else (radius - reduction_threshold) * reduction_factor + reduction_threshold
 
 def split_list(lst, n):
     for i in range(0, len(lst), n):
@@ -127,6 +127,8 @@ def paint_segments(
 
                 segment_map[closest_pixel_to_paint[0], closest_pixel_to_paint[1], closest_pixel_to_paint[2]] = True
                 segment_map[lower_edge[0]:highter_edge[0], lower_edge[1]:highter_edge[1], lower_edge[2]:highter_edge[2]] += sphere_map
+
+                contour_map[closest_pixel_to_paint[0], closest_pixel_to_paint[1], closest_pixel_to_paint[2]] = True
                 contour_map[lower_edge[0]:highter_edge[0], lower_edge[1]:highter_edge[1], lower_edge[2]:highter_edge[2]] += sphere_map
 
         segment_id = segmentation.AddEmptySegment("", centerline_name, vessel_colors[centerline_idx % len(vessel_colors)])
