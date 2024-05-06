@@ -243,8 +243,6 @@ class GraphBranches():
             change_majority_visibility(self.centers_line_markups, column, self.centerline_button)
         elif column == TreeColumnRole.VISIBILITY_CONTOUR:
             change_majority_visibility(self.contour_points_markups, column, self.contour_point_button)
-        elif column == TreeColumnRole.DELETE:
-            self.clear_all()
 
     def on_node_clicked(self, caller, event):
         displayNode = caller.GetDisplayNode()

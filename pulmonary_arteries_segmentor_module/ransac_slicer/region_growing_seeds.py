@@ -1,34 +1,10 @@
-import skimage.morphology
 from . import CustomStatusDialog
 import slicer
 import numpy as np
 import vtk
-import skimage
+from skimage.morphology import binary_dilation, ball
 from .color_palettes import vessel_colors, contour_color
 import time
-from datetime import timedelta
-
-class ProgressBarTimer:
-    def __init__(self, total):
-        self.total = total
-        self.count = 0
-
-    def __enter__(self):
-        self.start_time = time.time()
-        return self
-
-    def __exit__(self, type, value, traceback):
-        pass
-
-    @classmethod
-    def format_time(cls, seconds):
-        return str(timedelta(seconds=int(seconds)))
-
-    def update(self):
-        self.count += 1
-        elapsed_time = time.time() - self.start_time
-        remaining_time = (self.total - self.count) * (elapsed_time / self.count) if self.count > 0 else 0
-        return  elapsed_time, remaining_time
 
 def update_segment(
     segment_id: str,
@@ -68,6 +44,7 @@ def paint_segments(
     reduction_factor : float,
     reduction_threshold : float,
     contour_distance : int,
+    merge_all_vessels: bool
 ) -> None:
 
     # Important variables
@@ -101,8 +78,8 @@ def paint_segments(
     labelmap_node.GetImageData().AllocateScalars(vtk.VTK_UNSIGNED_CHAR, 1)
 
     # Transform ras coordinates (real world coordinates) into ijk coordinates (voxel coordinates)
-    centerlines = [[[(np_ras_to_ijk @ np.array([*point, 1]))[-2::-1] for point in list_part] for list_part in split_list(centerline, 2)] for centerline in centerlines]
-    radius = [list(split_list(radius_list, 2)) for radius_list in radius]
+    centerlines = [[[(np_ras_to_ijk @ np.array([*point, 1]))[-2::-1] for point in list_part] for list_part in split_list(centerline, 3)] for centerline in centerlines]
+    radius = [list(split_list(radius_list, 3)) for radius_list in radius]
 
     # Constants
     x, y, z = np.indices(volume_dimensions)
@@ -131,11 +108,18 @@ def paint_segments(
                 contour_map[closest_pixel_to_paint[0], closest_pixel_to_paint[1], closest_pixel_to_paint[2]] = True
                 contour_map[lower_edge[0]:highter_edge[0], lower_edge[1]:highter_edge[1], lower_edge[2]:highter_edge[2]] += sphere_map
 
-        segment_id = segmentation.AddEmptySegment("", centerline_name, vessel_colors[centerline_idx % len(vessel_colors)])
-        update_segment(segment_id, labelmap_node, segment_map.astype(np.uint8), segmentation_node)
+        if not merge_all_vessels:
+            # Each vessels has its segment
+            segment_id = segmentation.AddEmptySegment("", centerline_name, vessel_colors[centerline_idx % len(vessel_colors)])
+            update_segment(segment_id, labelmap_node, segment_map.astype(np.uint8), segmentation_node)
 
     del segment_map
     del treated_radius
+
+    if merge_all_vessels:
+        # Each vessels has been merges into one single segment
+        segment_id = segmentation.AddEmptySegment("", "vessels", vessel_colors[centerline_idx % len(vessel_colors)])
+        update_segment(segment_id, labelmap_node, contour_map.astype(np.uint8), segmentation_node)
 
     # Paint contours
 
@@ -158,11 +142,11 @@ def paint_segments(
 
     # Outter edge
     progress_dialog.setText("Computing the outter edge ...")
-    contours_dilated = skimage.morphology.binary_dilation(contour_map, skimage.morphology.ball(radius=contour_distance + 2))
+    contours_dilated = binary_dilation(contour_map, ball(radius=contour_distance + 2))
 
     # Inner edge
     progress_dialog.setText("Computing the inner edge ...")
-    contours_dilated[skimage.morphology.binary_dilation(contour_map, skimage.morphology.ball(radius=contour_distance))] = False
+    contours_dilated[binary_dilation(contour_map, ball(radius=contour_distance))] = False
     del contour_map
 
     progress_dialog.close()

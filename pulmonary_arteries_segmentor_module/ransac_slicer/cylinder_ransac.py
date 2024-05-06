@@ -535,6 +535,96 @@ def filter_points(p, center, r_min, r_max):
 
     return p[i]
 
+def sample_around_cylinder(vol, cyl, cfg):
+    """
+    Compute the current cylinder inliers without moving the cylinder center.
+    For more details about the process involved, please refer to the next_cylinder function,
+    since this function is a cheaper version of it.
+
+    Args:
+        vol (volume): Input volume
+        cyl (cylinder): Current cylinder
+        cfg (config): Tracking configuration
+
+    Returns:
+        np.array(dtype=np.float64): Current cylinder's inlier point set
+    """
+
+    order = vol.order
+    vol.order = 3
+
+    current_center = cyl.center
+
+    r_min = cyl.radius * cfg.r_min
+    r_max = cyl.radius * cfg.r_max
+    ray_len = cyl.radius * cfg.ray_len
+    err_threshold = cyl.radius * cfg.threshold
+
+    p = sample(vol, current_center, ray_len, cfg.n_samples, cfg.ray_dir_set)
+    vol.order = order
+    p = filter_points(p, current_center, 0.1 * ray_len, 0.9 * ray_len)
+
+    if p.shape[0] < 3:
+        return None, None
+
+    idx = np.argsort(-np.abs(cyl.direction @ cfg.cyl_dir_set.T))
+
+    p_max = 0
+    c_max = cylinder.cylinder()
+    i_max = np.empty((0, 3))
+
+    for axis in cfg.cyl_dir_set[idx]:
+        if np.abs(cyl.direction @ axis) < np.cos(cfg.a_max):
+            continue
+
+        c, inliers, p_inl = fit_cylinder_ransac(
+            p,
+            axis,
+            cfg.nb_test_min,
+            cfg.nb_test_max,
+            cfg.pct_inl,
+            r_min,
+            r_max,
+            err_threshold,
+        )
+
+        if p_inl > cfg.pct_inl:
+            p_max = p_inl
+            c_max = c
+            i_max = inliers
+            break
+
+        elif p_inl > cfg.pct_inl / 2 and p_max < p_inl:
+            p_max = p_inl
+            c_max = c
+            i_max = inliers
+
+    if i_max.shape[0] < 3:
+        return None, None
+
+    r_min = c_max.radius * cfg.r_min
+    r_max = c_max.radius * cfg.r_max
+    ray_len = c_max.radius * cfg.ray_len
+    err_threshold = c_max.radius * cfg.threshold
+
+    i_max = c_max.select_inliers(p, err_threshold)
+
+    if i_max.shape[0] < 3:
+        return None, None
+
+    i_max = c_max.fix_height(i_max)
+    c_max.refine(i_max)
+    i_max = c_max.select_inliers(p, err_threshold)
+
+    if i_max.shape[0] < 3:
+        return None
+
+    if c_max.direction @ cyl.direction < 0:
+        c_max.direction = -c_max.direction
+
+    i_max = c_max.fix_height(i_max)
+
+    return i_max
 
 def next_cylinder(vol, cyl, cfg):
     """
@@ -589,16 +679,13 @@ def next_cylinder(vol, cyl, cfg):
         p_max = 0
         c_max = cylinder.cylinder()
         i_max = np.empty((0, 3))
-        # print("cyl direction:", cyl.direction)
 
         for axis in cfg.cyl_dir_set[idx]:
             if np.abs(cyl.direction @ axis) < np.cos(cfg.a_max):
                 continue
-            # print("axis", axis, "calcul:", cyl.direction @ axis)
+
             c, inliers, p_inl = fit_cylinder_ransac(p, axis, cfg.nb_test_min, cfg.nb_test_max, cfg.pct_inl, r_min,
                                                     r_max, err_threshold)
-
-            # p_inl = inliers.shape[0]/p.shape[0]
 
             if p_inl > cfg.pct_inl:
                 p_max = p_inl
@@ -708,7 +795,7 @@ def track_cylinder(vol, cyl, cfg):
             break
 
 
-def track_branch(vol, cyl, cfg, centers_line, center_line_radius, contour_points, branch, progress_dialog):
+def track_branch(vol, cyl, cfg, centers_line, center_line_radius, contour_points, already_tracked_points, progress_dialog):
     """
     Performs the tracking in a volume, given an input cylinder and a configuration
 
@@ -720,18 +807,18 @@ def track_branch(vol, cyl, cfg, centers_line, center_line_radius, contour_points
         contour_point (np.ndarray): Contour points' data
     """
 
-    centerline_cpt = 0
     contour_points_cpt = 0
+    current_branch_cylinders = []
 
-    for _, (_cylinder, current_contour_points) in enumerate(track_cylinder(vol, cyl, cfg)):
+    for _cylinder, current_contour_points in track_cylinder(vol, cyl, cfg):
         # Criteria for acceptance: Need to be better justified especially third one
         #   1- Valid cylinder (i.shape[0] > 0)
         #   2- Sufficient advance: |c.center-cyl.center| > cyl.height/4
         #   3- Not redundant: d(c,branch) > cyl.radius/10
         # (Note: what if cyl.height/4 < cyl.radius/10?)
 
-        if current_contour_points.shape[0] > 0 and not _cylinder.is_redundant(branch):
-            branch.append(_cylinder)
+        if current_contour_points.shape[0] > 0 and not _cylinder.is_redundant(already_tracked_points) and not _cylinder.is_redundant(current_branch_cylinders):
+            current_branch_cylinders.append(_cylinder)
 
             centers_line = np.vstack((centers_line, _cylinder.center))
             contour_points.append(current_contour_points.tolist())
@@ -739,12 +826,12 @@ def track_branch(vol, cyl, cfg, centers_line, center_line_radius, contour_points
             radius = np.linalg.norm(current_contour_points - _cylinder.center, axis=1).min()
             center_line_radius.append(radius)
 
-            centerline_cpt += 1
             contour_points_cpt += len(current_contour_points)
 
-            progress_dialog.setText(f"Centerline points found: {centerline_cpt}\nContour points found: {contour_points_cpt}")
+            progress_dialog.setText(f"Centerline points found: {len(current_branch_cylinders)}\nContour points found: {contour_points_cpt}")
 
         else:
             break
 
-    return centers_line, contour_points, center_line_radius
+    progress_dialog.close()
+    return centers_line, contour_points, center_line_radius, current_branch_cylinders

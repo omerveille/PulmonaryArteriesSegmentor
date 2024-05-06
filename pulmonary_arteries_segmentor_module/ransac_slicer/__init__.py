@@ -6,6 +6,8 @@ from importlib.util import find_spec
 
 
 import slicer
+import time
+from datetime import timedelta
 import qt
 import math
 
@@ -22,6 +24,29 @@ def make_custom_progress_bar(labelText="labelText", windowTitle="windowTitle", w
     progress_bar.show()
     slicer.app.processEvents()
     return progress_bar
+
+class ProgressBarTimer:
+    def __init__(self, total):
+        self.total = total
+        self.count = 0
+
+    def __enter__(self):
+        self.start_time = time.time()
+        return self
+
+    def __exit__(self, type, value, traceback):
+        pass
+
+    @classmethod
+    def format_time(cls, seconds):
+        return str(timedelta(seconds=int(seconds)))
+
+    def update(self) -> tuple[float, float]:
+        self.count += 1
+        elapsed_time = time.time() - self.start_time
+        remaining_time = (self.total - self.count) * (elapsed_time / self.count) if self.count > 0 else 0
+        percent_done = math.floor(((self.count + 1) / self.total) * 100)
+        return  elapsed_time, remaining_time, percent_done
 
 class CustomStatusDialog:
     def __init__(self, windowTitle="windowTitle", text="text", width=None, height=None):
@@ -46,6 +71,7 @@ class CustomStatusDialog:
 
         self.label = label
         self.dialog = dialog
+
     def setText(self, text : str):
         self.label.setText(text)
         slicer.app.processEvents()

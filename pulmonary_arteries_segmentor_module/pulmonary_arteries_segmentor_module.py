@@ -386,7 +386,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
     def create_branch(self) -> None:
         with (slicer.util.tryWithErrorDisplay("Failed to compute tracking.", waitCursor=True)):
             progress_dialog = CustomStatusDialog(windowTitle="Computing centerline...", text="Please wait", width=300, height=50)
-            self.graph_branches = self.logic.processBranch(self._getParametersRansac(), self.graph_branches,
+            self.graph_branches = self.logic.processBranch(self._getParametersRansac(), self.ui.centerlineResolutionDoubleSpinBox.value, self.graph_branches,
                                                            self.ui.createBranch.text == "Create New Branch", progress_dialog)
 
             self.recenter3dView()
@@ -396,7 +396,6 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
 
             self._checkCanApply()
             self.updateSegmentationButtonState()
-            progress_dialog.close()
 
     def changeTextSize(self, value):
         for markup in self.graph_branches.centers_line_markups:
@@ -437,6 +436,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
                 self.ui.reductionFactorSlider.value,
                 self.ui.reductionThreshold.value,
                 self.ui.contourSpinbox.value,
+                self.ui.mergeAllVesselsCheckBox.checked
             )
 
             # Make the segmentation visible
@@ -455,6 +455,7 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
                 branch.setIcon(TreeColumnRole.VISIBILITY_CENTER, Icons.visibleOff)
                 branch.setIcon(TreeColumnRole.VISIBILITY_CONTOUR, Icons.visibleOff)
             self.ui.showCenterlineButton.text = "Show Centerlines"
+            self.ui.showContourPointsButton.text = "Show Contour Points"
 
             self.updateSegmentationButtonState()
 
@@ -491,6 +492,8 @@ class pulmonary_arteries_segmentor_moduleWidget(ScriptedLoadableModuleWidget, VT
             # We ask to clear the tree before loading the new one, if not we do nothing
             if not self.graph_branches.clear_all():
                 return
+            self.updateSegmentationButtonState()
+            self._checkCanApply()
 
         with (slicer.util.tryWithErrorDisplay("Failed to restore tree architecture.", waitCursor=True)):
             # Restoring lists
@@ -541,11 +544,7 @@ class pulmonary_arteries_segmentor_moduleLogic(ScriptedLoadableModuleLogic):
     def getParameterNode(self):
         return pulmonary_arteries_segmentor_moduleParameterNode(super().getParameterNode())
 
-    def processBranch(self, params: list, graph_branches: GraphBranches, isNewBranch: bool, progress_dialog: CustomStatusDialog) -> None:
-        """
-        def run_ransac(vol, input_centers_curve_path, output_centers_curve_path, input_contour_point_path,
-         output_contour_point_path, starting_point, direction_point, starting_radius, pct_inlier_points, threshold):
-        """
+    def processBranch(self, params: list, centerline_resolution: float, graph_branches: GraphBranches, isNewBranch: bool, progress_dialog: CustomStatusDialog) -> None:
 
         vol = slicer.util.array(params[0].GetID())
         vol = vol.swapaxes(0, 2)
@@ -564,7 +563,7 @@ class pulmonary_arteries_segmentor_moduleLogic(ScriptedLoadableModuleLogic):
         params[2].GetNthControlPointPosition(params[2].GetNumberOfControlPoints()-1, direction_point)
 
         graph_branches = run_ransac(vol, starting_point, direction_point, params[5],
-                                    params[3], params[4], graph_branches, isNewBranch, progress_dialog)
+                                    params[3], params[4], centerline_resolution, graph_branches, isNewBranch, progress_dialog)
 
         return graph_branches
 
