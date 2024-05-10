@@ -1,24 +1,46 @@
 #!/usr/bin/env python-real
+from .volume import volume
+from .popup_utils import CustomProgressBar, CustomStatusDialog
 from .cylinder_ransac import (
     sample_around_cylinder,
     track_branch,
     config,
 )
 
-from . import ProgressBarTimer, make_custom_progress_bar
 from .cylinder import cylinder, closest_branch
 import numpy as np
-import slicer
 from ransac_slicer.graph_branches import GraphBranches
 import qt
 
 
-def interpolate_point(cyl_0, cyl_1, vol, cfg, distance):
+def interpolate_point(
+    cyl_0: cylinder, cyl_1: cylinder, vol: volume, cfg: config, distance: float
+) -> tuple[list[np.ndarray], list[list[np.ndarray]]]:
+    """
+    Interpolate points between two cylinders.
+    Points must be sparsed from at least a certain distance.
+    Each new centerline point comes with its associated contour points.
+
+    Parameters
+    ----------
+    cyl_0: first cylinder to interpolate from (excluded).
+    cyl_1: second cylinder to interpolate to (excluded).
+    vol: the volume from which points are sampled.
+    cfg: configuration regarding the RANSAC algorithm.
+    distance: minimum distance between interpolated points allowed.
+
+    Returns
+    ----------
+
+    list[np.ndarray]
+    A list of center points.
+
+    list[list[np.ndarray]]
+    A list of contours points, each center point has its list of contours.
+    """
     direction = cyl_1.center - cyl_0.center
     radius_diff = cyl_1.radius - cyl_0.radius
     nb_points = int(np.linalg.norm(direction) // distance)
-
-    print(f"point every {distance} mm | number of points : {nb_points}")
 
     centers, contour_points = [], []
 
@@ -50,18 +72,43 @@ def interpolate_point(cyl_0, cyl_1, vol, cfg, distance):
 
 
 def interpolate_centerline(
-    cylinders, contour_points, vol, cfg, distance=3
-):
-    progress_bar = progress_bar = make_custom_progress_bar(
-        labelText="Interpolating centerline points...",
+    cylinders: list[cylinder],
+    contour_points: list[list[np.ndarray]],
+    vol: volume,
+    cfg: config,
+    distance: float,
+) -> tuple[list[np.ndarray], list[list[np.ndarray]], list[float]]:
+    """
+    Refine the points of a centerline according to a certain minimum distance between points.
+
+    Parameters
+    ----------
+    cylinders: cylinder fitted through RANSAC algorithm.
+    contour_points: list of contour point of each cylinder.
+    vol: the volume from which points are sampled.
+    cfg: configuration regarding the RANSAC algorithm.
+    distance: minimum distance between interpolated points allowed.
+
+    Returns
+    ----------
+
+    list[np.ndarray]
+    A list of center points.
+
+    list[list[np.ndarray]]
+    A list of contours points, each center point has its list of contours.
+
+    list[float]
+    A list of underestimated radius, each center point has an underestimated radius.
+    """
+    new_centerline, new_contour = [cylinders[0].center], [contour_points[0]]
+
+    with CustomProgressBar(
+        total=len(cylinders) - 1,
+        quantity_to_measure="segments to interpolate",
         windowTitle="Interpolating centerline points...",
         width=300,
-    )
-
-    new_centerline, new_contour = [cylinders[0].center], [contour_points[0]]
-    last_percent = 0
-
-    with ProgressBarTimer(total=len(cylinders) - 1) as timer:
+    ) as progress_bar:
         for idx in range(len(cylinders) - 1):
             tmp_centerline, tmp_contour_points = interpolate_point(
                 cylinders[idx],
@@ -75,15 +122,8 @@ def interpolate_centerline(
             new_centerline.extend(tmp_centerline)
             new_contour.extend(tmp_contour_points)
 
-            elapsed_time, remaining_time, percent_done = timer.update()
-            if percent_done - last_percent >= 1 or last_percent == 0 :
-                last_percent = percent_done
-                progress_bar.value = percent_done
-                progress_bar.labelText = f"{timer.count}/{timer.total} segments to interpolate\nElapsed time: {ProgressBarTimer.format_time(elapsed_time)}\nRemaining time: {ProgressBarTimer.format_time(remaining_time)}"
-                slicer.app.processEvents()
+            progress_bar.update()
 
-    progress_bar.hide()
-    progress_bar.close()
     return (
         np.array(new_centerline),
         new_contour,
@@ -95,51 +135,78 @@ def interpolate_centerline(
 
 
 def run_ransac(
-    vol,
-    starting_point,
-    direction_point,
-    starting_radius,
-    pct_inlier_points,
-    threshold,
-    centerline_resolution,
+    vol: volume,
+    starting_point: np.ndarray,
+    direction_point: np.ndarray,
+    starting_radius: float,
+    percent_inlier_points: int,
+    threshold: int,
+    centerline_resolution: float,
     graph_branches: GraphBranches,
-    isNewBranch,
-    progress_dialog,
-):
+    isNewBranch: float,
+    progress_dialog: CustomStatusDialog,
+) -> GraphBranches:
+    """
+    Run the RANSAC algorithm to fit a cylinder according to the parameters indicated by the user.
+
+    Apply a post-processing by refining the centerline points up to a certain resolution and updates the
+    graph branch.
+
+    Parameters
+    ----------
+    vol: the volume from which points are sampled.
+    starting_point: starting point of the first cylinder.
+    direction_point: point indicating the direction of the first cylinder.
+    starting_radius: radius in mm of the first cylinder to fit.
+    percent_inlier_points: percent of inlier required to be considered a correct model.
+    threshold: threshold from which points are considered inlier.
+    centerline_resolution: minimum distance between centerline points.
+    graph_branches: the graph branch object.
+    isNewBranch: flag to tell if it is the first branch or not.
+    progress_dialog: UI window to inform the user on the state of the branch tracking.
+
+    Returns
+    ----------
+
+    GraphBranches
+    Updated graph
+    """
     # Input info for branch tracking (in RAS coordinates)
     if isNewBranch:
         _, _, idx_cb, idx_cyl = closest_branch(
             starting_point, graph_branches.branch_list
         )
-        if idx_cyl == len(graph_branches.centers_lines[idx_cb]) - 2:
-            idx_cyl = len(graph_branches.centers_lines[idx_cb]) - 1
+        if idx_cyl == len(graph_branches.centerlines[idx_cb]) - 2:
+            idx_cyl = len(graph_branches.centerlines[idx_cb]) - 1
 
         # Update Graph
         parent_node = graph_branches.names[idx_cb]
         # Case when the closest node is the last point of a branch, we concatenate the two branches
-        if idx_cyl == len(graph_branches.centers_lines[idx_cb]) - 1:
-            end_center_line, end_center_radius, end_contour_point = (
-                graph_branches.centers_lines[idx_cb][idx_cyl : idx_cyl + 1],
-                graph_branches.centers_line_radius[idx_cb][idx_cyl : idx_cyl + 1],
+        if idx_cyl == len(graph_branches.centerlines[idx_cb]) - 1:
+            end_centerline, end_center_radius, end_contour_point = (
+                graph_branches.centerlines[idx_cb][idx_cyl : idx_cyl + 1],
+                graph_branches.centerline_radius[idx_cb][idx_cyl : idx_cyl + 1],
                 graph_branches.contours_points[idx_cb][idx_cyl : idx_cyl + 1],
             )
         # Case when the closest node is the first point of a branch, we had the branch to the parent of the closest branch, thus the branch way have more than 2 childs
         elif idx_cyl == 0:
             parent_node = graph_branches.tree_widget.getParentNodeId(parent_node)
-            end_center_line, end_center_radius, end_contour_point = (
-                graph_branches.centers_lines[idx_cb][:1],
-                graph_branches.centers_line_radius[idx_cb][:1],
+            end_centerline, end_center_radius, end_contour_point = (
+                graph_branches.centerlines[idx_cb][:1],
+                graph_branches.centerline_radius[idx_cb][:1],
                 graph_branches.contours_points[idx_cb][:1],
             )
         # Case when the closest node is in the middle of a branch, we split the branch at the intersection point
         else:
-            end_center_line, end_center_radius, end_contour_point = (
-                graph_branches.split_branch(idx_cb, idx_cyl, parent_node)
-            )
+            (
+                end_centerline,
+                end_center_radius,
+                end_contour_point,
+            ) = graph_branches.split_branch(idx_cb, idx_cyl, parent_node)
     else:
         parent_node = None
         graph_branches.nodes.append(starting_point)
-        end_center_line = np.empty((0, 3))
+        end_centerline = np.empty((0, 3))
         end_center_radius = []
         end_contour_point = []
 
@@ -148,8 +215,8 @@ def run_ransac(
     init_radius = starting_radius
 
     # Tracking configuration
-    pct_inl = pct_inlier_points / 100
-    err = threshold / 100
+    pct_inl = percent_inlier_points / 100.0
+    err = threshold / 100.0
     cfg = config(percent_inliers=pct_inl, threshold=err)
 
     # Initialize tracking
@@ -160,7 +227,7 @@ def run_ransac(
         vol,
         cyl,
         cfg,
-        end_center_line,
+        end_centerline,
         end_center_radius,
         end_contour_point,
         [elt for branch in graph_branches.branch_list for elt in branch],

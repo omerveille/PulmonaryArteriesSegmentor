@@ -24,9 +24,17 @@ colors = [
     [255, 120, 89],
 ]
 
-vessel_colors = [(np.array(color, dtype=float) / 255.0).tolist() for color in colors]
-contour_color = [1., 215./255. ,0.]
+vessel_colors: list[list[float, float, float]] = [
+    (np.array(color, dtype=float) / 255.0).tolist() for color in colors
+]
+contour_color: list[float, float, float] = [1.0, 215.0 / 255.0, 0.0]
+direction_points_color: list[float, float, float] = (
+    np.array([130, 255, 70], dtype=float) / 255.0
+).tolist()
 
-direction_points_color = (np.array([130, 255, 70], dtype=float) / 255.0).tolist()
-centerline_color = (np.array([139, 152, 255], dtype=float) / 255.0).tolist()
-contour_points_color = (np.array([255, 147, 161], dtype=float) / 255.0).tolist()
+centerline_color: list[float, float, float] = (
+    np.array([139, 152, 255], dtype=float) / 255.0
+).tolist()
+contour_points_color: list[float, float, float] = (
+    np.array([255, 147, 161], dtype=float) / 255.0
+).tolist()

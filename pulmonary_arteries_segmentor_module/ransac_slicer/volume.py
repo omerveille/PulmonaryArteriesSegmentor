@@ -17,7 +17,9 @@ def ras_to_vtk(ijk_to_ras):
     res = np.linalg.norm(ijk_to_ras[:3, :3], axis=0)
     ras_to_ijk = np.linalg.inv(ijk_to_ras)
 
-    m = np.array([[0, 0, 1, 0], [0, 1, 0, 0], [1, 0, 0, 0], [0, 0, 0, 1]]) @ (np.diag(np.append(res, 1)) @ ras_to_ijk)
+    m = np.array([[0, 0, 1, 0], [0, 1, 0, 0], [1, 0, 0, 0], [0, 0, 0, 1]]) @ (
+        np.diag(np.append(res, 1)) @ ras_to_ijk
+    )
 
     return m
 
@@ -36,7 +38,8 @@ def vtk_to_ras(ijk_to_ras):
     res = np.linalg.norm(ijk_to_ras[:3, :3], axis=0)
 
     return (ijk_to_ras @ np.diag(1 / np.append(res, 1))) @ np.array(
-        [[0, 0, 1, 0], [0, 1, 0, 0], [1, 0, 0, 0], [0, 0, 0, 1]])
+        [[0, 0, 1, 0], [0, 1, 0, 0], [1, 0, 0, 0], [0, 0, 0, 1]]
+    )
 
 
 class volume:
@@ -77,7 +80,9 @@ class volume:
             np.array(dtype=np.float64): Volume's data mapped to new coordinates
         """
 
-        return sndi.map_coordinates(self._vol, self.transf_ras_to_ijk(p).T, order=self.order, prefilter=False)
+        return sndi.map_coordinates(
+            self._vol, self.transf_ras_to_ijk(p).T, order=self.order, prefilter=False
+        )
 
     def transf_ijk_to_ras(self, p):
         """
@@ -189,13 +194,23 @@ class volume:
 
         # RAS coordinates of voxels in the patch
         # Voxel coordinates (wrt patch), in homogeneous space
-        p = np.vstack((np.mgrid[0:dim[0], 0:dim[1], 0:dim[2]].reshape((3, -1)), np.ones(np.prod(dim))))
+        p = np.vstack(
+            (
+                np.mgrid[0 : dim[0], 0 : dim[1], 0 : dim[2]].reshape((3, -1)),
+                np.ones(np.prod(dim)),
+            )
+        )
 
         # Express the points in ras, then global ijk coordinates
         c = (t @ p)[:3]
 
         # Note: could avoid computations by avoiding multiple transforms (TB confirmed)
-        return volume(sndi.map_coordinates(self._vol, c, order=self.order, prefilter=False).reshape(dim), trans_patch)
+        return volume(
+            sndi.map_coordinates(
+                self._vol, c, order=self.order, prefilter=False
+            ).reshape(dim),
+            trans_patch,
+        )
 
     # Need to validate this axis parameter. Not sure this is working with a different setup
 
@@ -376,7 +391,7 @@ class volume:
         """
 
         if value < 0:
-            raise ValueError('Volume.order value must be positive or zero')
+            raise ValueError("Volume.order value must be positive or zero")
 
         self._order = value
 
@@ -393,7 +408,12 @@ class volume:
                                         min_pos[i] <= max_pos[i]
         """
 
-        return np.sort(self.transf_ijk_to_ras(np.vstack((np.zeros(3), np.asarray(self._vol.shape) - 1))), axis=0)
+        return np.sort(
+            self.transf_ijk_to_ras(
+                np.vstack((np.zeros(3), np.asarray(self._vol.shape) - 1))
+            ),
+            axis=0,
+        )
 
     @property
     def min(self):

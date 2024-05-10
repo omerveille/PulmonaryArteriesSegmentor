@@ -1,6 +1,10 @@
 import numpy as np
 import math
 
+from .popup_utils import CustomStatusDialog
+
+from .volume import volume
+
 
 from . import cylinder, helper
 
@@ -13,9 +17,21 @@ class config:
     _min_radius = 0.05
     _max_radius = 5
 
-    def __init__(self, nb_test_min=0, nb_test_max=1000, percent_inliers=0.5, threshold=0.1, radius_min=0.5,
-                 radius_max=1.5, angle_max=np.pi / 3, nb_cyl_dirs=81, nb_ray_dirs=162, n_samples=128, ray_length=2,
-                 nb_iter=1000):
+    def __init__(
+        self,
+        nb_test_min=0,
+        nb_test_max=1000,
+        percent_inliers=0.5,
+        threshold=0.1,
+        radius_min=0.5,
+        radius_max=1.5,
+        angle_max=np.pi / 3,
+        nb_cyl_dirs=81,
+        nb_ray_dirs=162,
+        n_samples=128,
+        ray_length=2,
+        nb_iter=1000,
+    ):
         """
         Initialize algorithm's configuration
 
@@ -82,7 +98,7 @@ class config:
 
         self._nb_test_min = n if n > 0 else 0
 
-        if not hasattr(self, '_nb_test_max') or n > self._nb_test_max:
+        if not hasattr(self, "_nb_test_max") or n > self._nb_test_max:
             self._nb_test_max = n
 
     @property
@@ -108,7 +124,7 @@ class config:
 
         self._nb_test_max = n if n > 0 else 0
 
-        if not hasattr(self, '_nb_test_min') or n < self._nb_test_min:
+        if not hasattr(self, "_nb_test_min") or n < self._nb_test_min:
             self._nb_test_min = n
 
     @property
@@ -191,7 +207,7 @@ class config:
 
         self._r_min = r
 
-        if not hasattr(self, '_r_max') or self.r_max < r:
+        if not hasattr(self, "_r_max") or self.r_max < r:
             self.r_max = r
 
     @property
@@ -223,10 +239,10 @@ class config:
 
         self._r_max = r
 
-        if not hasattr(self, '_r_min') or self.r_min > r:
+        if not hasattr(self, "_r_min") or self.r_min > r:
             self.r_min = r
 
-        if not hasattr(self, '_ray_len') or self.ray_len < r:
+        if not hasattr(self, "_ray_len") or self.ray_len < r:
             self.ray_len = r
 
     @property
@@ -280,7 +296,7 @@ class config:
         """
 
         # Only update _cyl_dirs if necessary
-        if not hasattr(self, '_cyl_dirs') or self._cyl_dirs.shape[0] < nb_cyl_dirs:
+        if not hasattr(self, "_cyl_dirs") or self._cyl_dirs.shape[0] < nb_cyl_dirs:
             # Regular sampling of the half Gaussian sphere
             self._cyl_dirs = helper.sample_half_gauss_sphere(nb_cyl_dirs)
 
@@ -316,7 +332,7 @@ class config:
         """
 
         # Only update _ray_dirs if necessary
-        if not hasattr(self, '_ray_dirs') or self._ray_dirs.shape[0] < nb_ray_dirs:
+        if not hasattr(self, "_ray_dirs") or self._ray_dirs.shape[0] < nb_ray_dirs:
             # Regular sampling of the half Gaussian sphere
             self._ray_dirs = helper.sample_gauss_sphere(nb_ray_dirs)
 
@@ -436,7 +452,6 @@ def fit_cylinder_ransac(p, axis, nb_test_min, nb_test_max, pct_inl, r_min, r_max
 
     # Do this at least nb_test_min times
     for _ in range(nb_test_min):
-
         # Pick 3 points at random
         q = p[np.random.choice(p.shape[0], 3, replace=False)]
 
@@ -459,7 +474,6 @@ def fit_cylinder_ransac(p, axis, nb_test_min, nb_test_max, pct_inl, r_min, r_max
     # Now go up to nb_test_max tries, but return as soon as a correct cylinder has been found
     # (ie percentage of inliers is sufficient)
     for _ in range(nb_test_min, nb_test_max):
-
         # Return if percentage of inliers is sufficient
         if max_p_inl >= pct_inl:
             return max_cyl, max_inliers, max_p_inl
@@ -534,6 +548,7 @@ def filter_points(p, center, r_min, r_max):
     i = np.where(np.logical_and(d > r_min, d < r_max))[0]
 
     return p[i]
+
 
 def sample_around_cylinder(vol, cyl, cfg):
     """
@@ -626,6 +641,7 @@ def sample_around_cylinder(vol, cyl, cfg):
 
     return i_max
 
+
 def next_cylinder(vol, cyl, cfg):
     """
     Compute next cylinder
@@ -647,7 +663,6 @@ def next_cylinder(vol, cyl, cfg):
     # We try with original cfg.advance_ration, and if it fails, try again with 2*cfg.advance_ratio (typical case when
     # the artery is highly curved)
     for li in [1, 2]:
-
         # Compute guess for next cylinder center: advance from current one by cfg.advance_ratio times its height along
         # direction li is here in case the original advance_ratio (0.5 by default) was not large enough to ensure
         # sufficient progress in the tracking
@@ -684,8 +699,16 @@ def next_cylinder(vol, cyl, cfg):
             if np.abs(cyl.direction @ axis) < np.cos(cfg.a_max):
                 continue
 
-            c, inliers, p_inl = fit_cylinder_ransac(p, axis, cfg.nb_test_min, cfg.nb_test_max, cfg.pct_inl, r_min,
-                                                    r_max, err_threshold)
+            c, inliers, p_inl = fit_cylinder_ransac(
+                p,
+                axis,
+                cfg.nb_test_min,
+                cfg.nb_test_max,
+                cfg.pct_inl,
+                r_min,
+                r_max,
+                err_threshold,
+            )
 
             if p_inl > cfg.pct_inl:
                 p_max = p_inl
@@ -759,7 +782,9 @@ def next_cylinder(vol, cyl, cfg):
         if c_max.radius > 4:
             c_max.height = c_max.radius
         dist_centers = np.linalg.norm(c_max.center - cyl.center)
-        if dist_centers >= cyl.height / 2 and (cyl.height == 0 or dist_centers <= cyl.height * 2):
+        if dist_centers >= cyl.height / 2 and (
+            cyl.height == 0 or dist_centers <= cyl.height * 2
+        ):
             # Restore interpolation order
             vol.order = order
             # print("found cyl with direction:", c_max.direction, "and angle:",cyl.direction @ c_max.direction)
@@ -795,7 +820,16 @@ def track_cylinder(vol, cyl, cfg):
             break
 
 
-def track_branch(vol, cyl, cfg, centers_line, center_line_radius, contour_points, already_tracked_points, progress_dialog):
+def track_branch(
+    vol: volume,
+    cyl: cylinder,
+    cfg: config,
+    centerline: list[np.ndarray],
+    centerline_radius: list[float],
+    contour_points: list[list[np.ndarray]],
+    already_tracked_points: list[cylinder.cylinder],
+    progress_dialog: CustomStatusDialog,
+):
     """
     Performs the tracking in a volume, given an input cylinder and a configuration
 
@@ -817,21 +851,29 @@ def track_branch(vol, cyl, cfg, centers_line, center_line_radius, contour_points
         #   3- Not redundant: d(c,branch) > cyl.radius/10
         # (Note: what if cyl.height/4 < cyl.radius/10?)
 
-        if current_contour_points.shape[0] > 0 and not _cylinder.is_redundant(already_tracked_points) and not _cylinder.is_redundant(current_branch_cylinders):
+        if (
+            current_contour_points.shape[0] > 0
+            and not _cylinder.is_redundant(already_tracked_points)
+            and not _cylinder.is_redundant(current_branch_cylinders)
+        ):
             current_branch_cylinders.append(_cylinder)
 
-            centers_line = np.vstack((centers_line, _cylinder.center))
+            centerline = np.vstack((centerline, _cylinder.center))
             contour_points.append(current_contour_points.tolist())
 
-            radius = np.linalg.norm(current_contour_points - _cylinder.center, axis=1).min()
-            center_line_radius.append(radius)
+            radius = np.linalg.norm(
+                current_contour_points - _cylinder.center, axis=1
+            ).min()
+            centerline_radius.append(radius)
 
             contour_points_cpt += len(current_contour_points)
 
-            progress_dialog.setText(f"Centerline points found: {len(current_branch_cylinders)}\nContour points found: {contour_points_cpt}")
+            progress_dialog.setText(
+                f"Centerline points found: {len(current_branch_cylinders)}\nContour points found: {contour_points_cpt}"
+            )
 
         else:
             break
 
     progress_dialog.close()
-    return centers_line, contour_points, center_line_radius, current_branch_cylinders
+    return centerline, contour_points, centerline_radius, current_branch_cylinders
