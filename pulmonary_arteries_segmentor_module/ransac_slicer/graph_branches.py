@@ -275,7 +275,7 @@ class GraphBranches:
                 e[0],
                 e[1],
                 name=self.names[i],
-                center_line=self.centerlines[i],
+                centerline=self.centerlines[i],
                 contour_points=self.contours_points[i],
             )
 

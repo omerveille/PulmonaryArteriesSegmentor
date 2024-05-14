@@ -691,25 +691,35 @@ class pulmonary_arteries_segmentor_moduleWidget(
             slicer.mrmlScene.RemoveObserver(self.nodeDeletionObserverTag)
             self.nodeDeletionObserverTag = None
 
+            # Compute branch drawing order, we draw in reverse bfs order, so that parent branches are always drawn on top of childs
+            G = nx.DiGraph()
+            for i, node in enumerate(self.graph_branches.nodes):
+                G.add_node(i, pos=node)
+
+            for i, edge in enumerate(self.graph_branches.edges):
+                G.add_edge(
+                    edge[0],
+                    edge[1],
+                    edge_idx=i,
+                )
+            branch_draw_order = [
+                G[a][b]["edge_idx"] for a, b in nx.bfs_edges(G, source=0)
+            ][::-1]
+            del G
+
             # Create the segments and paint them
             paint_segments(
                 self._parameterNode.inputVolume,
                 self.graph_branches.centerlines,
                 self.graph_branches.names,
                 self.graph_branches.centerline_radius,
+                branch_draw_order,
                 self.segmentationNode,
                 self.ui.reductionFactorSlider.value,
                 self.ui.reductionThreshold.value,
                 self.ui.contourSpinbox.value,
                 self.ui.mergeAllVesselsCheckBox.checked,
             )
-
-            # Make the segmentation visible
-            if not self.segmentationNode.GetSegmentation().ContainsRepresentation(
-                "Closed surface"
-            ):
-                self.segmentationNode.CreateClosedSurfaceRepresentation()
-            self.segmentationNode.GetDisplayNode().SetVisibility3D(True)
 
             # Set the current segmentation into the UI
             self.ui.SegmentEditorWidget.setSegmentationNode(self.segmentationNode)
@@ -800,12 +810,12 @@ class pulmonary_arteries_segmentor_moduleWidget(
                     self.graph_branches.branch_list.append(
                         [
                             cylinder(center=np.array(cp))
-                            for cp in graph[a][b]["center_line"]
+                            for cp in graph[a][b]["centerline"]
                         ]
                     )
                     self.graph_branches.names.append(graph[a][b]["name"])
                     self.graph_branches.centerlines.append(
-                        np.array(graph[a][b]["center_line"])
+                        np.array(graph[a][b]["centerline"])
                     )
                     self.graph_branches.contours_points.append(
                         graph[a][b]["contour_points"]
@@ -815,16 +825,16 @@ class pulmonary_arteries_segmentor_moduleWidget(
                         [
                             np.linalg.norm(
                                 np.array(graph[a][b]["contour_points"][k])
-                                - np.array(graph[a][b]["center_line"][k]),
+                                - np.array(graph[a][b]["centerline"][k]),
                                 axis=1,
                             ).min()
-                            for k in range(len(graph[a][b]["center_line"]))
+                            for k in range(len(graph[a][b]["centerline"]))
                         ]
                     )
                     self.graph_branches.edges.append((a, b))
                     self.graph_branches.create_new_markups(
                         graph[a][b]["name"],
-                        np.array(graph[a][b]["center_line"]),
+                        np.array(graph[a][b]["centerline"]),
                         graph[a][b]["contour_points"],
                     )
                     edge_name_table[b] = graph[a][b]["name"]

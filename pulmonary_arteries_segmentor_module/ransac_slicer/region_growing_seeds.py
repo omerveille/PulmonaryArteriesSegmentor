@@ -1,3 +1,4 @@
+from typing import Union
 from .popup_utils import CustomProgressBar, CustomStatusDialog
 import slicer
 import numpy as np
@@ -8,7 +9,7 @@ import time
 
 
 def update_segment(
-    segment_id: str,
+    segment_ids: Union[str, list],
     labelmap_node: slicer.vtkMRMLSegmentationNode,
     data: np.ndarray,
     segmentation_node: slicer.vtkMRMLLabelMapVolumeNode,
@@ -19,13 +20,17 @@ def update_segment(
     Parameters
     ----------
 
-    segment_id: id of the segment to update.
+    segment_ids: id or list of ids of the segment(s) to update.
     labelmap_node: slicer labelmap to update.
     data: numpy array that delimit the segment zone.
     segmentation_node: slicer segmentation on which the segment are updated.
     """
     vtk_segment_id = vtk.vtkStringArray()
-    vtk_segment_id.InsertNextValue(segment_id)
+    if isinstance(segment_ids, list):
+        for ids in segment_ids:
+            vtk_segment_id.InsertNextValue(ids)
+    else:
+        vtk_segment_id.InsertNextValue(segment_ids)
 
     slicer.util.updateVolumeFromArray(labelmap_node, data)
     slicer.modules.segmentations.logic().ImportLabelmapToSegmentationNode(
@@ -110,6 +115,7 @@ def paint_segments(
     centerlines: list[np.ndarray],
     centerline_names: list[str],
     radius: list[list[float]],
+    branch_draw_order: list[int],
     segmentation_node: slicer.vtkMRMLSegmentationNode,
     reduction_factor: float,
     reduction_threshold: float,
@@ -126,6 +132,7 @@ def paint_segments(
     centerlines: centerlines segmented.
     centerline_names: list of the centerline names, will be used for the segmentation name.
     radius: list of radius of each centerline points.
+    branch_draw_order: list of indexes in which branch will be drawn.
     segmentation_node: segmentation_node on which segment will be added and updated.
     reduction_threshold: threshold from which a reduction is applied to the radius.
     reduction_factor: amount of the reduction.
@@ -201,19 +208,18 @@ def paint_segments(
         ]
         for radius_per_centerline in radius
     ]
-    contour_map = np.zeros(volume_dimensions, dtype=np.bool_)
+    segment_map = np.zeros(volume_dimensions, dtype=np.uint8)
+
     with CustomProgressBar(
         total=len(centerlines),
         quantity_to_measure="vessels painted",
         windowTitle="Computing segment regions...",
         width=300,
     ) as progress_bar:
-        for centerline_idx, (
-            centerline,
-            radius_per_centerline,
-            centerline_name,
-        ) in enumerate(zip(centerlines, treated_radius, centerline_names)):
-            segment_map = np.zeros(volume_dimensions, dtype=np.bool_)
+        for centerline_idx in branch_draw_order:
+            centerline = centerlines[centerline_idx]
+            radius_per_centerline = treated_radius[centerline_idx]
+            sub_segment_map = np.zeros_like(segment_map, dtype=np.bool_)
             for points, points_radius in zip(centerline, radius_per_centerline):
                 lower_edge, highter_edge = compute_bbox(
                     points, points_radius, low_bound, volume_dimensions
@@ -265,55 +271,24 @@ def paint_segments(
                         dtype=int,
                     )
 
-                    segment_map[
+                    sub_segment_map[
                         closest_pixel_to_paint[0],
                         closest_pixel_to_paint[1],
                         closest_pixel_to_paint[2],
                     ] = True
-                    segment_map[
+                    sub_segment_map[
                         lower_edge[0] : highter_edge[0],
                         lower_edge[1] : highter_edge[1],
                         lower_edge[2] : highter_edge[2],
                     ] += sphere_map
 
-                    contour_map[
-                        closest_pixel_to_paint[0],
-                        closest_pixel_to_paint[1],
-                        closest_pixel_to_paint[2],
-                    ] = True
-                    contour_map[
-                        lower_edge[0] : highter_edge[0],
-                        lower_edge[1] : highter_edge[1],
-                        lower_edge[2] : highter_edge[2],
-                    ] += sphere_map
-
-            if not merge_all_vessels:
-                # Each vessels has its segment
-                segment_id = segmentation.AddEmptySegment(
-                    "",
-                    centerline_name,
-                    vessel_colors[centerline_idx % len(vessel_colors)],
-                )
-                update_segment(
-                    segment_id,
-                    labelmap_node,
-                    segment_map.astype(np.uint8),
-                    segmentation_node,
-                )
+            segment_map[sub_segment_map] = centerline_idx + 1
             progress_bar.update()
 
-    del segment_map
     del treated_radius
 
-    if merge_all_vessels:
-        # Each vessels has been merges into one single segment
-        segment_id = segmentation.AddEmptySegment("", "Vessels", vessel_colors[0])
-        update_segment(
-            segment_id, labelmap_node, contour_map.astype(np.uint8), segmentation_node
-        )
-
     # Paint contours
-
+    contours_map = (segment_map > 0).astype(np.bool_)
     # Filtering point that have not been shrunk
     centerline_and_radius = [
         [centerline_part, [np.array([r] * 3) / voxel_spacing for r in radius_part]]
@@ -365,7 +340,7 @@ def paint_segments(
                 )
                 <= 1
             ).astype(np.bool_)
-            contour_map[
+            contours_map[
                 lower_edge[0] : highter_edge[0],
                 lower_edge[1] : highter_edge[1],
                 lower_edge[2] : highter_edge[2],
@@ -379,21 +354,43 @@ def paint_segments(
 
     # Outter edge
     progress_dialog.setText("Computing the outter edge ...")
-    contours_dilated = binary_dilation(contour_map, ball(radius=contour_distance + 2))
+    contours_dilated = binary_dilation(contours_map, ball(radius=contour_distance + 2))
 
     # Inner edge
     progress_dialog.setText("Computing the inner edge ...")
     contours_dilated[
-        binary_dilation(contour_map, ball(radius=contour_distance))
+        binary_dilation(contours_map, ball(radius=contour_distance))
     ] = False
-    del contour_map
+    del contours_map
 
-    progress_dialog.close()
+    # Add the segment to the segmentation, also merge the segment and contour map
+    ids = []
+    if merge_all_vessels:
+        segment_map = (segment_map > 0).astype(np.uint8) + (
+            contours_dilated * 2
+        ).astype(np.uint8)
+        ids.append(segmentation.AddEmptySegment("", "Vessels", vessel_colors[0]))
+    else:
+        segment_map += (contours_dilated * (len(centerlines) + 1)).astype(np.uint8)
+        for idx, segment_name in enumerate(centerline_names):
+            ids.append(
+                segmentation.AddEmptySegment(
+                    "", segment_name, vessel_colors[idx % len(vessel_colors)]
+                )
+            )
+    del contours_dilated
 
-    segment_id = segmentation.AddEmptySegment("", "Contour", contour_color)
-    segmentation_node.GetDisplayNode().SetSegmentOpacity3D(segment_id, 0.1)
+    # Add contours to segment id list, also makes it transparent
+    ids.append(segmentation.AddEmptySegment("", "Contours", contour_color))
+    segmentation_node.GetDisplayNode().SetSegmentOpacity3D(ids[-1], 0.1)
+
+    # Write the labelmap inside the segmentation
     update_segment(
-        segment_id, labelmap_node, contours_dilated.astype(np.uint8), segmentation_node
+        ids,
+        labelmap_node,
+        segment_map,
+        segmentation_node,
     )
 
     slicer.mrmlScene.RemoveNode(labelmap_node)
+    progress_dialog.close()
