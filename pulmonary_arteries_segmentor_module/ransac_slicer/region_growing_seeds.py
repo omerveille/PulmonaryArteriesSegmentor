@@ -210,80 +210,78 @@ def paint_segments(
     ]
     segment_map = np.zeros(volume_dimensions, dtype=np.uint8)
 
-    with CustomProgressBar(
-        total=len(centerlines),
+    for centerline_idx in CustomProgressBar(
+        iterable=branch_draw_order,
         quantity_to_measure="vessels painted",
         windowTitle="Computing segment regions...",
         width=300,
-    ) as progress_bar:
-        for centerline_idx in branch_draw_order:
-            centerline = centerlines[centerline_idx]
-            radius_per_centerline = treated_radius[centerline_idx]
-            sub_segment_map = np.zeros_like(segment_map, dtype=np.bool_)
-            for points, points_radius in zip(centerline, radius_per_centerline):
-                lower_edge, highter_edge = compute_bbox(
-                    points, points_radius, low_bound, volume_dimensions
-                )
-                for point, radius_ in zip(points, points_radius):
-                    center_x, center_y, center_z = point
-                    radius_x, radius_y, radius_z = radius_
+    ):
+        centerline = centerlines[centerline_idx]
+        radius_per_centerline = treated_radius[centerline_idx]
+        sub_segment_map = np.zeros_like(segment_map, dtype=np.bool_)
+        for points, points_radius in zip(centerline, radius_per_centerline):
+            lower_edge, highter_edge = compute_bbox(
+                points, points_radius, low_bound, volume_dimensions
+            )
+            for point, radius_ in zip(points, points_radius):
+                center_x, center_y, center_z = point
+                radius_x, radius_y, radius_z = radius_
 
-                    sphere_map = (
+                sphere_map = (
+                    (
                         (
-                            (
-                                x[
-                                    lower_edge[0] : highter_edge[0],
-                                    lower_edge[1] : highter_edge[1],
-                                    lower_edge[2] : highter_edge[2],
-                                ]
-                                - center_x
-                            )
-                            ** 2
-                            / radius_x**2
-                            + (
-                                y[
-                                    lower_edge[0] : highter_edge[0],
-                                    lower_edge[1] : highter_edge[1],
-                                    lower_edge[2] : highter_edge[2],
-                                ]
-                                - center_y
-                            )
-                            ** 2
-                            / radius_y**2
-                            + (
-                                z[
-                                    lower_edge[0] : highter_edge[0],
-                                    lower_edge[1] : highter_edge[1],
-                                    lower_edge[2] : highter_edge[2],
-                                ]
-                                - center_z
-                            )
-                            ** 2
-                            / radius_z**2
+                            x[
+                                lower_edge[0] : highter_edge[0],
+                                lower_edge[1] : highter_edge[1],
+                                lower_edge[2] : highter_edge[2],
+                            ]
+                            - center_x
                         )
-                        <= 1
-                    ).astype(np.bool_)
-                    closest_pixel_to_paint = np.maximum(
-                        np.minimum(
-                            [round(coord) for coord in point], high_bound, dtype=int
-                        ),
-                        low_bound,
-                        dtype=int,
+                        ** 2
+                        / radius_x**2
+                        + (
+                            y[
+                                lower_edge[0] : highter_edge[0],
+                                lower_edge[1] : highter_edge[1],
+                                lower_edge[2] : highter_edge[2],
+                            ]
+                            - center_y
+                        )
+                        ** 2
+                        / radius_y**2
+                        + (
+                            z[
+                                lower_edge[0] : highter_edge[0],
+                                lower_edge[1] : highter_edge[1],
+                                lower_edge[2] : highter_edge[2],
+                            ]
+                            - center_z
+                        )
+                        ** 2
+                        / radius_z**2
                     )
+                    <= 1
+                ).astype(np.bool_)
+                closest_pixel_to_paint = np.maximum(
+                    np.minimum(
+                        [round(coord) for coord in point], high_bound, dtype=int
+                    ),
+                    low_bound,
+                    dtype=int,
+                )
 
-                    sub_segment_map[
-                        closest_pixel_to_paint[0],
-                        closest_pixel_to_paint[1],
-                        closest_pixel_to_paint[2],
-                    ] = True
-                    sub_segment_map[
-                        lower_edge[0] : highter_edge[0],
-                        lower_edge[1] : highter_edge[1],
-                        lower_edge[2] : highter_edge[2],
-                    ] += sphere_map
+                sub_segment_map[
+                    closest_pixel_to_paint[0],
+                    closest_pixel_to_paint[1],
+                    closest_pixel_to_paint[2],
+                ] = True
+                sub_segment_map[
+                    lower_edge[0] : highter_edge[0],
+                    lower_edge[1] : highter_edge[1],
+                    lower_edge[2] : highter_edge[2],
+                ] += sphere_map
 
-            segment_map[sub_segment_map] = centerline_idx + 1
-            progress_bar.update()
+        segment_map[sub_segment_map] = centerline_idx + 1
 
     del treated_radius
 

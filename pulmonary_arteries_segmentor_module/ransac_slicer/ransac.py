@@ -103,26 +103,23 @@ def interpolate_centerline(
     """
     new_centerline, new_contour = [cylinders[0].center], [contour_points[0]]
 
-    with CustomProgressBar(
-        total=len(cylinders) - 1,
+    for idx in CustomProgressBar(
+        iterable=range(len(cylinders) - 1),
         quantity_to_measure="segments to interpolate",
         windowTitle="Interpolating centerline points...",
         width=300,
-    ) as progress_bar:
-        for idx in range(len(cylinders) - 1):
-            tmp_centerline, tmp_contour_points = interpolate_point(
-                cylinders[idx],
-                cylinders[idx + 1],
-                vol,
-                cfg,
-                distance,
-            )
-            tmp_centerline.append(cylinders[idx + 1].center)
-            tmp_contour_points.append(contour_points[idx + 1])
-            new_centerline.extend(tmp_centerline)
-            new_contour.extend(tmp_contour_points)
-
-            progress_bar.update()
+    ):
+        tmp_centerline, tmp_contour_points = interpolate_point(
+            cylinders[idx],
+            cylinders[idx + 1],
+            vol,
+            cfg,
+            distance,
+        )
+        tmp_centerline.append(cylinders[idx + 1].center)
+        tmp_contour_points.append(contour_points[idx + 1])
+        new_centerline.extend(tmp_centerline)
+        new_contour.extend(tmp_contour_points)
 
     return (
         np.array(new_centerline),

@@ -330,16 +330,14 @@ class GraphBranches:
         self.contours_points = []
         self.centerline_radius = []
 
-        with CustomProgressBar(
-            total=len(self.centerline_markups),
+        for _ in CustomProgressBar(
+            iterable=range(len(self.centerline_markups)),
             quantity_to_measure="branch deleted",
             windowTitle="Clearing tree architecture...",
             width=300,
-        ) as progress_bar:
-            for _ in range(len(self.centerline_markups)):
-                slicer.mrmlScene.RemoveNode(self.centerline_markups.pop())
-                slicer.mrmlScene.RemoveNode(self.contour_points_markups.pop())
-                progress_bar.update()
+        ):
+            slicer.mrmlScene.RemoveNode(self.centerline_markups.pop())
+            slicer.mrmlScene.RemoveNode(self.contour_points_markups.pop())
 
         self.tree_widget.clear()
         self.update_visibility_button(TreeColumnRole.VISIBILITY_CENTER)

@@ -1,6 +1,7 @@
 import math
 import time
 from typing import Union
+from collections.abc import Iterable
 import slicer
 import qt
 from datetime import timedelta
@@ -83,81 +84,22 @@ class CustomStatusDialog:
         self.dialog.close()
 
 
-class ProgressBarTimer:
+class CustomProgressBar:
     """
-    Class to wrap a loop in order to compute wait time and percentage of job done.
-    """
-
-    def __init__(self, total: int):
-        self.total = total
-        self.count = 0
-
-    def __enter__(self):
-        self.start_time = time.time()
-        self.last_second = self.start_time
-        self.last_percent = 0
-
-        return self
-
-    def __exit__(self, type, value, traceback):
-        pass
-
-    @classmethod
-    def format_time(cls, seconds: int) -> str:
-        """
-        Format second duration into string.
-        """
-        return str(timedelta(seconds=int(seconds)))
-
-    def update(self) -> tuple[float, float, float, bool]:
-        """
-        Compute the elapsed, remaining and percentage done.
-
-        Returns
-        ----------
-
-        Elasped time, Remaining time, Percentage done and a boolean to suggest an UI update.
-
-        Times returned are expressed in seconds.
-        """
-        self.count += 1
-
-        current_time = time.time()
-
-        elapsed_time = current_time - self.start_time
-        remaining_time = (
-            (self.total - self.count) * (elapsed_time / self.count)
-            if self.count > 0
-            else 0
-        )
-        percent_done = int(math.floor((self.count / self.total) * 100))
-
-        should_update_ui = False
-        if (percent_done - self.last_percent) >= 1:
-            should_update_ui = True
-            self.last_percent = percent_done
-
-        if (current_time - self.last_second) >= 1:
-            should_update_ui = True
-            self.last_second = current_time
-
-        return elapsed_time, remaining_time, percent_done, should_update_ui
-
-
-class CustomProgressBar(ProgressBarTimer):
-    """
-    Class to ease the creation of a progress bar.
+    Class to ease the creation of a progress bar which display remaining time, elapsed time, and percentage of work done.
     """
 
     def __init__(
         self,
-        total: int,
+        iterable: Iterable,
         quantity_to_measure: str,
         windowTitle: str = "windowTitle",
         width: Union[int, None] = None,
         height: Union[int, None] = None,
     ):
-        super().__init__(total)
+        self.total = len(iterable)
+        self.iterable = iter(iterable)
+        self.count = 0
 
         self.quantity_to_measure = quantity_to_measure
         self.elapsed_time = 0
@@ -170,21 +112,63 @@ class CustomProgressBar(ProgressBarTimer):
             height=height,
         )
 
-    def __exit__(self, type, value, traceback):
+    def __close_bar(self):
         self.progress_bar.hide()
         self.progress_bar.close()
 
     def __make_progress_bar_text(self) -> str:
-        return f"{self.count}/{self.total} {self.quantity_to_measure}\nElapsed time: {ProgressBarTimer.format_time(self.elapsed_time)}\nRemaining time: {ProgressBarTimer.format_time(self.remaining_time)}"
+        return f"{self.count}/{self.total} {self.quantity_to_measure}\nElapsed time: {self.__format_time(self.elapsed_time)}\nRemaining time: {self.__format_time(self.remaining_time)}"
 
-    def update(self):
-        (
-            self.elapsed_time,
-            self.remaining_time,
-            percent_done,
-            should_update_ui,
-        ) = super().update()
-        if should_update_ui:
-            self.progress_bar.labelText = self.__make_progress_bar_text()
-            self.progress_bar.value = percent_done
-            slicer.app.processEvents()
+    def __format_time(self, seconds: int) -> str:
+        """
+        Format second duration into string.
+        """
+        return str(timedelta(seconds=int(seconds)))
+
+    def __update(self) -> bool:
+        """
+        Compute the elapsed, remaining and percentage of work done.
+
+        Returns
+        ----------
+
+        A boolean to suggest an UI update.
+        """
+        self.count += 1
+
+        current_time = time.time()
+
+        self.elapsed_time = current_time - self.start_time
+        self.remaining_time = (
+            (self.total - self.count) * (self.elapsed_time / self.count)
+            if self.count > 0
+            else 0
+        )
+        current_percent_work_done = int(math.floor((self.count / self.total) * 100))
+
+        should_update_ui = False
+        if (current_percent_work_done - self.percent_work_done) >= 1:
+            should_update_ui = True
+            self.percent_work_done = current_percent_work_done
+
+        if (current_time - self.last_second_elapsed) >= 1:
+            should_update_ui = True
+            self.last_second_elapsed = current_time
+
+        return should_update_ui
+
+    def __iter__(self):
+        self.start_time = time.time()
+        self.last_second_elapsed = self.start_time
+        self.percent_work_done = 0
+
+        try:
+            for obj in self.iterable:
+                if self.__update():
+                    self.progress_bar.labelText = self.__make_progress_bar_text()
+                    self.progress_bar.value = self.percent_work_done
+                    slicer.app.processEvents()
+                yield obj
+
+        finally:
+            self.__close_bar()

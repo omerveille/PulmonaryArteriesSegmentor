@@ -799,47 +799,41 @@ class pulmonary_arteries_segmentor_moduleWidget(
         ):
             edge_name_table = {0: None}
 
-            with CustomProgressBar(
-                total=len(graph.edges),
+            for a, b in CustomProgressBar(
+                iterable=graph.edges,
                 quantity_to_measure="branch loaded",
                 windowTitle="Restoring tree architecture...",
                 width=300,
-            ) as progress_bar:
-                for a, b in graph.edges:
-                    # Restoring lists
-                    self.graph_branches.branch_list.append(
-                        [
-                            cylinder(center=np.array(cp))
-                            for cp in graph[a][b]["centerline"]
-                        ]
-                    )
-                    self.graph_branches.names.append(graph[a][b]["name"])
-                    self.graph_branches.centerlines.append(
-                        np.array(graph[a][b]["centerline"])
-                    )
-                    self.graph_branches.contours_points.append(
-                        graph[a][b]["contour_points"]
-                    )
-                    # Recompute radius
-                    self.graph_branches.centerline_radius.append(
-                        [
-                            np.linalg.norm(
-                                np.array(graph[a][b]["contour_points"][k])
-                                - np.array(graph[a][b]["centerline"][k]),
-                                axis=1,
-                            ).min()
-                            for k in range(len(graph[a][b]["centerline"]))
-                        ]
-                    )
-                    self.graph_branches.edges.append((a, b))
-                    self.graph_branches.create_new_markups(
-                        graph[a][b]["name"],
-                        np.array(graph[a][b]["centerline"]),
-                        graph[a][b]["contour_points"],
-                    )
-                    edge_name_table[b] = graph[a][b]["name"]
-
-                    progress_bar.update()
+            ):
+                # Restoring lists
+                self.graph_branches.branch_list.append(
+                    [cylinder(center=np.array(cp)) for cp in graph[a][b]["centerline"]]
+                )
+                self.graph_branches.names.append(graph[a][b]["name"])
+                self.graph_branches.centerlines.append(
+                    np.array(graph[a][b]["centerline"])
+                )
+                self.graph_branches.contours_points.append(
+                    graph[a][b]["contour_points"]
+                )
+                # Recompute radius
+                self.graph_branches.centerline_radius.append(
+                    [
+                        np.linalg.norm(
+                            np.array(graph[a][b]["contour_points"][k])
+                            - np.array(graph[a][b]["centerline"][k]),
+                            axis=1,
+                        ).min()
+                        for k in range(len(graph[a][b]["centerline"]))
+                    ]
+                )
+                self.graph_branches.edges.append((a, b))
+                self.graph_branches.create_new_markups(
+                    graph[a][b]["name"],
+                    np.array(graph[a][b]["centerline"]),
+                    graph[a][b]["contour_points"],
+                )
+                edge_name_table[b] = graph[a][b]["name"]
 
             for node in graph.nodes(data=True):
                 self.graph_branches.nodes.append(node[1]["pos"])
