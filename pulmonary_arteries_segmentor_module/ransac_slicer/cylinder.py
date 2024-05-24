@@ -2,7 +2,7 @@ import numpy as np
 import math
 import scipy.optimize as scopt
 
-from .helper import (cross, homogenize)
+from .helper import cross, homogenize
 from .segment import segment
 
 
@@ -11,8 +11,14 @@ class cylinder:
     Class to represent a cylinder
     """
 
-    def __init__(self, center=np.array([0, 0, 0], dtype=np.float64), radius=1,
-                 direction=np.array([0, 0, 1], dtype=np.float64), height=-1, name=''):
+    def __init__(
+        self,
+        center=np.array([0, 0, 0], dtype=np.float64),
+        radius=1,
+        direction=np.array([0, 0, 1], dtype=np.float64),
+        height=-1,
+        name="",
+    ):
         """
         Generate a new instance of cylinder.
         The radius should be positive (ValueError raised if negative or zero, see radius property setter)
@@ -45,7 +51,9 @@ class cylinder:
             cylinder: Copy of current cylinder
         """
 
-        return cylinder(self.center, self.radius, self.direction, self.height, self.name)
+        return cylinder(
+            self.center, self.radius, self.direction, self.height, self.name
+        )
 
     @property
     def center(self):
@@ -161,8 +169,10 @@ class cylinder:
             str: Representation of cylinder object
         """
 
-        return f'{self.center[0]} {self.center[1]} {self.center[2]} {self.radius} {self.direction[0]} ' \
-               f'{self.direction[1]} {self.direction[2]} {self.height}'
+        return (
+            f"{self.center[0]} {self.center[1]} {self.center[2]} {self.radius} {self.direction[0]} "
+            f"{self.direction[1]} {self.direction[2]} {self.height}"
+        )
 
     def display(self):
         """
@@ -274,7 +284,9 @@ class cylinder:
             return np.append(cyl.center, cyl.radius * cyl.direction)
 
         def param_to_cyl(param):
-            return cylinder(param[:3], np.linalg.norm(param[3:]), param[3:], self.height)
+            return cylinder(
+                param[:3], np.linalg.norm(param[3:]), param[3:], self.height
+            )
 
         def residue(param):
             cyl = param_to_cyl(param)
@@ -306,8 +318,16 @@ class cylinder:
 
         r_max2 = (self.radius / 10) ** 2
 
-        return len(b) >= 2 and min(
-            [segment(s.center, e.center).distance_sqr(self.center) for s, e in zip(b[:-1], b[1:])]) < r_max2
+        return (
+            len(b) >= 2
+            and min(
+                [
+                    segment(s.center, e.center).distance_sqr(self.center)
+                    for s, e in zip(b[:-1], b[1:])
+                ]
+            )
+            < r_max2
+        )
 
 
 def from_string(s):
@@ -334,7 +354,7 @@ def from_string(s):
         cylinder: Cylinder created from its description
     """
 
-    v = np.fromstring(s, dtype=float, sep=' ')
+    v = np.fromstring(s, dtype=float, sep=" ")
 
     if len(v) == 0:
         return cylinder()
@@ -428,7 +448,13 @@ def change_frame(in_cyl, t):
     c = homogenize(in_cyl.center) @ t.T[:, :3]
     d = in_cyl.direction @ t.T[:3, :3]
 
-    return cylinder(center=c, radius=in_cyl.radius, direction=d, height=in_cyl.height, name=f'{in_cyl.name} (transd)')
+    return cylinder(
+        center=c,
+        radius=in_cyl.radius,
+        direction=d,
+        height=in_cyl.height,
+        name=f"{in_cyl.name} (transd)",
+    )
 
 
 def load_branch(f_name):

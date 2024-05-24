@@ -120,4 +120,10 @@ def cross(a, b):
         np.array(dtype=np.float64): 3-arrays result
     """
 
-    return np.array([a[1] * b[2] - b[1] * a[2], b[0] * a[2] - a[0] * b[2], a[0] * b[1] - b[0] * a[1]])
+    return np.array(
+        [
+            a[1] * b[2] - b[1] * a[2],
+            b[0] * a[2] - a[0] * b[2],
+            a[0] * b[1] - b[0] * a[1],
+        ]
+    )

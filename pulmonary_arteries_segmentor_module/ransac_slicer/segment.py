@@ -28,7 +28,7 @@ class segment:
             str: Segment object representation
         """
 
-        return f'Segment ::\n\tStart: {self.start} -- End: {self.end}'
+        return f"Segment ::\n\tStart: {self.start} -- End: {self.end}"
 
     def as_vector(self):
         """
